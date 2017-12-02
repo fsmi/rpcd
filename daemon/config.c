@@ -1,4 +1,4 @@
-int parse_config(char* file){
+int config_parse(char* file){
 	//TODO implement
 	return 0;
 }
