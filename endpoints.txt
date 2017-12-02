@@ -1,0 +1,52 @@
+API Endpoints
+
+GET /commands
+	List all known commands
+	Response format
+		[
+			{
+				name:"Example 1",
+				args:[
+					{"name":"arg1", type:"enum", options:["foo", "bar"]},
+					{"name":"stringarg", type:"string", hint:"your hint"},
+					...
+				]
+			},
+			...
+		]
+
+GET /layouts
+	List all known layouts
+	Response format
+		[
+			{
+				name:"Fullscreen",
+				xres:800,
+				yres:600,
+				frames:[
+					{id:1, ul_x:0, ul_y:0, lr_x:300, lr_y:400},
+					...
+				]
+			},
+			...
+		]
+
+GET/POST /reset
+	Restore initial state, including layout
+
+GET/POST /stop
+	Stop all running commands, do not touch layout
+
+GET/POST /layout/name
+	Activate a layout
+
+POST /command/name
+	Start a command
+	Request format
+		{
+			fullscreen:1,
+			arguments:[
+				{name:"arg1", value:"foo"},
+				...
+			]
+		}
