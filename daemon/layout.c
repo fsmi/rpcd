@@ -4,6 +4,19 @@
 
 #include "layout.h"
 
+int layout_ok(layout_t* layout){
+	if(!layout->name || !layout->frames){
+		fprintf(stderr, "Layout defines no frames or has no name\n");
+		return 1;
+	}
+
+	if(layout->width == 0 || layout->height == 0){
+		fprintf(stderr, "Invalid layout dimensions\n");
+		return 1;
+	}
+	return 0;
+}
+
 int layout_parse(char* file, layout_t* layout){
 	//TODO read and parse an sfdump file
 	return 1;

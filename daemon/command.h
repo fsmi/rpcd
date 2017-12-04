@@ -16,5 +16,6 @@ typedef struct /*_rpcd_command_t*/ {
 	argument_t* args;
 } command_t;
 
+int command_ok(command_t* command);
 void command_init(command_t* command);
 void command_free(command_t* command);

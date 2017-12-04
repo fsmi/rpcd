@@ -4,6 +4,10 @@
 #include "rpcd.h"
 #include "config.h"
 
+rpcd_config_t rpcd_config = {
+	0
+};
+
 volatile sig_atomic_t shutdown_requested = 0;
 
 static int usage(char* fn){
