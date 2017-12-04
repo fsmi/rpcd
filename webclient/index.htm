@@ -27,21 +27,41 @@
 					</div>
 
 					<div id="layouts_actions">
-						<button onclick="layouts.applyLayout();">apply</button>
+						<button onclick="window.controller.applyLayout();">apply</button>
 					</div>
 				</div>
 				<div id="layouts_right" class="grid_right">
 					<h3>Available Layouts:</h3>
 					<ul id="layout_items" class="grid_items">
-						<li>
-							<input id="layout1" type="radio" name="layouts"/>
-							<label for="layout1">Dummy 1</label>
-						</li>
 					</ul>
 				</div>
 			</section>
 			<section id="commands">
-				Commands
+				<div id="commands_left">
+
+					<div>
+						<h3 id="cmdHeadline">-None-</h3>
+						<label for="fullscreen">Fullscreen
+							<input type="checkbox" id="fullscreen" />
+						</label>
+
+						<h3>Arguments</h3>
+						<ul id="cmd_args" class="ul">
+							<li>
+							</li>
+						</ul>
+					</div>
+
+					<div id="commands_actions">
+						<button onclick="window.controller.startCommand();">Start</button>
+						<button onclick="window.controller.stop();">Stop</button>
+					</div>
+				</div>
+				<div id="commands_right" class="grid_right">
+					<h3>Available Commands:</h3>
+					<ul id="command_items" class="grid_items">
+					</ul>
+				</div>
 			</section>
 		</div>
 	</body>

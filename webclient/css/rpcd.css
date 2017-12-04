@@ -78,7 +78,7 @@ section {
   border-top: 1px solid #ddd;
 }
 
-input {
+input[type="radio"] {
 	display:none;
 }
 
@@ -95,6 +95,10 @@ main > input:checked + label {
 label:hover {
   color: #888;
   cursor: pointer;
+}
+
+.ul {
+	list-style: none;
 }
 
 label {
