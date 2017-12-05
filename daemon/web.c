@@ -18,7 +18,11 @@ int web_config(char* option, char* value){
 }
 
 int web_ok(){
-	return (listen_fd < 0) ? 1 : 0;
+	if(listen_fd < 0){
+		fprintf(stderr, "No listening socket for API\n");
+		return 1;
+	}
+	return 0;
 }
 
 void web_cleanup(){
