@@ -5,6 +5,11 @@ html, body {
 	height: 100%;
 }
 
+body {
+	height: calc(100% - 1em);
+	padding-top: 1em;
+}
+
 .hidden {
 	display: none;
 }
@@ -44,8 +49,12 @@ section {
 
 .grid_right {
 	width: 100%;
-	border-left: solid 1px;
 	overflow: auto;
+	margin-left: -1px;
+}
+
+.grid_action {
+	padding-top: 1em;
 }
 
 h3 {
@@ -56,11 +65,21 @@ h3 {
 	width: 100%;
 	padding: 0;
 }
+.grid_left {
+	border-right: 1px solid #ddd;
+	padding-top: 20px;
+}
 
-.grid_items li {
+.grid_items li label {
 	list-style: none;
-	border: solid black 1px;
+	border-top: solid black 1px;
 	padding: 5em 1em;
+	display: block;
+}
+
+input[name="layouts"]:checked ~ label,
+input[name="commands"]:checked ~ label {
+	border-left: 1px solid white;
 }
 
 main {
@@ -74,7 +93,6 @@ main {
 section {
   display: none;
   height: 90%;
-  padding: 20px 0 0;
   border-top: 1px solid #ddd;
 }
 
@@ -109,6 +127,13 @@ label {
   text-align: center;
   color: #bbb;
   border: 1px solid transparent;
+}
+
+canvas {
+	width: 80%;
+	display: block;
+	margin: 0 auto;
+	border: 1px solid;
 }
 
 #tabl:checked ~ #layouts,
