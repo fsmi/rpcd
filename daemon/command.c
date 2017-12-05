@@ -48,6 +48,10 @@ int command_new(char* name){
 }
 
 int command_config(char* option, char* value){
+	size_t u;
+	argument_type new_type = arg_string;
+	char* token = NULL;
+
 	if(!commands){
 		fprintf(stderr, "No commands defined yet\n");
 		return 1;
@@ -62,8 +66,87 @@ int command_config(char* option, char* value){
 		return 0;
 	}
 
-	//TODO parse arguments
-	return 1;
+	//add an argument to the last command
+	command_t* cmd = commands + (ncommands - 1);
+
+	if(strlen(option) < 1){
+		fprintf(stderr, "Argument to command %s is missing name\n", cmd->name);
+		return 1;
+	}
+
+	//check if the argument was already defined
+	for(u = 0; u < cmd->nargs; u++){
+		if(!strcmp(cmd->args[u].name, option)){
+			fprintf(stderr, "Command %s has duplicate arguments %s\n", cmd->name, option);
+		}
+	}
+
+	//check for argument type
+	if(!strncmp(value, "string ", 7)){
+		value += 7;
+	}
+	else if(!strncmp(value, "enum ", 5)){
+		new_type = arg_enum;
+		value += 5;
+		//FIXME this check should probably include whitespaces
+		if(strlen(value) < 1){
+			fprintf(stderr, "ENUM argument %s to command %s requires at least one option\n", option, cmd->name);
+			return 1;
+		}
+	}
+
+	//allocate space for new argument
+	cmd->args = realloc(cmd->args, (cmd->nargs + 1) * sizeof(argument_t));
+	if(!cmd->args){
+		cmd->nargs = 0;
+		fprintf(stderr, "Failed to allocate memory\n");
+		return 1;
+	}
+
+	//add the new argument
+	cmd->args[cmd->nargs].type = new_type;
+	cmd->args[cmd->nargs].additional = NULL;
+	cmd->args[cmd->nargs].name = strdup(option);
+	if(!cmd->args[cmd->nargs].name){
+		fprintf(stderr, "Failed to allocate memory\n");
+		return 1;
+	}
+
+	//handle additional data
+	if(new_type == arg_string){
+		cmd->args[cmd->nargs].additional = malloc(sizeof(char*));
+		if(!cmd->args[cmd->nargs].additional){
+			fprintf(stderr, "Failed to allocate memory\n");
+			return 1;
+		}
+		cmd->args[cmd->nargs].additional[0] = strdup(value);
+		if(!cmd->args[cmd->nargs].additional[0]){
+			fprintf(stderr, "Failed to allocate memory\n");
+			return 1;
+		}
+	}
+	else{
+		u = 0;
+		for(token = strtok(value, " "); token; token = strtok(NULL, " ")){
+			cmd->args[cmd->nargs].additional = realloc(cmd->args[cmd->nargs].additional, (u + 2) * sizeof(char*));
+			if(!cmd->args[cmd->nargs].additional){
+				fprintf(stderr, "Failed to allocate memory\n");
+				return 1;
+			}
+
+			cmd->args[cmd->nargs].additional[u + 1] = NULL;
+			cmd->args[cmd->nargs].additional[u] = strdup(token);
+			if(!cmd->args[cmd->nargs].additional[u]){
+				fprintf(stderr, "Failed to allocate memory\n");
+				return 1;
+			}
+			u++;
+		}
+	}
+
+	cmd->nargs++;
+
+	return 0;
 }
 
 int command_ok(){
