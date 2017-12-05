@@ -4,9 +4,10 @@
 #include "rpcd.h"
 #include "config.h"
 
-rpcd_config_t rpcd_config = {
-	0
-};
+#include "command.h"
+#include "layout.h"
+#include "x11.h"
+#include "web.h"
 
 volatile sig_atomic_t shutdown_requested = 0;
 
@@ -33,6 +34,9 @@ int main(int argc, char** argv){
 		//api_handle
 	}
 
-
+	web_cleanup();
+	x11_cleanup();
+	layout_cleanup();
+	command_cleanup();
 	return EXIT_SUCCESS;
 }

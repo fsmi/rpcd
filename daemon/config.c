@@ -4,9 +4,11 @@
 #include <string.h>
 #include <errno.h>
 
+#include "layout.h"
+#include "command.h"
+#include "web.h"
+#include "x11.h"
 #include "config.h"
-
-extern rpcd_config_t rpcd_config;
 
 static enum {
 	conf_none,
@@ -28,92 +30,6 @@ static char* config_trim_line(char* in){
 	}
 
 	return in;
-}
-
-void config_free(){
-	//TODO
-}
-
-static int config_web(char* option, char* value){
-	//TODO
-	return 0;
-}
-
-static int config_x11(char* option, char* value){
-	//TODO
-	return 0;
-}
-
-static int config_command_new(char* name){
-	if(strlen(name) < 1){
-		fprintf(stderr, "Invalid command name specified\n");
-		return 1;
-	}
-
-	rpcd_config.commands = realloc(rpcd_config.commands, (rpcd_config.ncommands + 1) * sizeof(command_t));
-	if(!rpcd_config.commands){
-		fprintf(stderr, "Failed to allocate memory\n");
-		return 1;
-	}
-
-	command_init(&rpcd_config.commands[rpcd_config.ncommands]);
-
-	rpcd_config.commands[rpcd_config.ncommands].name = strdup(name);
-	if(!rpcd_config.commands[rpcd_config.ncommands].name){
-		fprintf(stderr, "Failed to allocate memory\n");
-		return 1;
-	}
-
-	rpcd_config.ncommands++;
-	return 0;
-}
-
-static int config_command(char* option, char* value){
-	//TODO
-	return 0;
-}
-
-static int config_layout_new(char* name){
-	if(strlen(name) < 1){
-		fprintf(stderr, "Invalid layout name specified\n");
-		return 1;
-	}
-
-	rpcd_config.layouts = realloc(rpcd_config.layouts, (rpcd_config.nlayouts + 1) * sizeof(layout_t));
-	if(!rpcd_config.layouts){
-		fprintf(stderr, "Failed to allocate memory\n");
-		return 1;
-	}
-
-	layout_init(&rpcd_config.layouts[rpcd_config.nlayouts]);
-
-	rpcd_config.layouts[rpcd_config.nlayouts].name = strdup(name);
-	if(!rpcd_config.layouts[rpcd_config.nlayouts].name){
-		fprintf(stderr, "Failed to allocate memory\n");
-		return 1;
-	}
-
-	rpcd_config.nlayouts++;
-	return 0;
-}
-
-static int config_layout(char* option, char* value){
-	if(!strcmp(option, "file")){
-		if(layout_parse(value, &rpcd_config.layouts[rpcd_config.nlayouts - 1])){
-			return 1;
-		}
-	}
-	else{
-		fprintf(stderr, "Unknown parameter %s for layout section\n", option);
-		return 1;
-	}
-	return 0;
-}
-
-int config_sane(){
-	return (rpcd_config.commands && command_ok(&rpcd_config.commands[rpcd_config.ncommands - 1]))
-		|| (rpcd_config.layouts && layout_ok(&rpcd_config.layouts[rpcd_config.nlayouts - 1]));
-//		|| web_ok() || x11_ok();
 }
 
 int config_parse(char* cfg_file){
@@ -142,8 +58,8 @@ int config_parse(char* cfg_file){
 		if(*line == '[' && line[strlen(line) - 1] == ']'){
 			//sanity check
 			
-			if((config_state == conf_layout && !layout_ok(&rpcd_config.layouts[rpcd_config.nlayouts - 1]))
-					|| (config_state == conf_command && !command_ok(&rpcd_config.commands[rpcd_config.ncommands - 1]))){
+			if((config_state == conf_layout && layout_ok())
+					|| (config_state == conf_command && command_ok())){
 				fprintf(stderr, "%s:%zu Cannot switch section before the previous configuration is done\n", cfg_file, line_no);
 				rv = 1;
 				goto bail;
@@ -157,7 +73,7 @@ int config_parse(char* cfg_file){
 			}
 			else if(!strncmp(line, "[layout ", 8)){
 				line[strlen(line) - 1] = 0;
-				if(config_layout_new(line + 8)){
+				if(layout_new(line + 8)){
 					rv = 1;
 					goto bail;
 				}
@@ -165,7 +81,7 @@ int config_parse(char* cfg_file){
 			}
 			else if(!strncmp(line, "[command ", 9)){
 				line[strlen(line) - 1] = 0;
-				if(config_command_new(line + 9)){
+				if(command_new(line + 9)){
 					rv = 1;
 					goto bail;
 				}
@@ -193,25 +109,25 @@ int config_parse(char* cfg_file){
 					rv = 1;
 					goto bail;
 				case conf_web:
-					if(config_web(line, argument)){
+					if(web_config(line, argument)){
 						rv = 1;
 						goto bail;
 					}
 					break;
 				case conf_x11:
-					if(config_x11(line, argument)){
+					if(x11_config(line, argument)){
 						rv = 1;
 						goto bail;
 					}
 					break;
 				case conf_layout:
-					if(config_layout(line, argument)){
+					if(layout_config(line, argument)){
 						rv = 1;
 						goto bail;
 					}
 					break;
 				case conf_command:
-					if(config_command(line, argument)){
+					if(layout_config(line, argument)){
 						rv = 1;
 						goto bail;
 					}
@@ -226,5 +142,5 @@ bail:
 	fclose(source);
 	free(line_raw);
 
-	return rv || config_sane();
+	return rv || command_ok() || layout_ok() || web_ok() || x11_ok();
 }

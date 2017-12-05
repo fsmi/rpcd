@@ -11,7 +11,7 @@ typedef struct /*_ratpoison_layout_t*/ {
 	frame_t* frames;
 } layout_t;
 
-int layout_ok(layout_t* layout);
-int layout_parse(char* file, layout_t* layout);
-void layout_init(layout_t* layout);
-void layout_free(layout_t* layout);
+int layout_new(char* name);
+int layout_config(char* option, char* value);
+int layout_ok();
+void layout_cleanup();
