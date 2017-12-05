@@ -1,4 +1,39 @@
 class Controller {
+	ajax(url, method, payload) {
+		return new Promise(function(resolve, reject) {
+			var request = new XMLHttpRequest();
+			request.onreadystatechange = function() {
+				if (request.readyState === XMLHttpRequest.DONE) {
+					switch(request.status) {
+						case 200:
+							try {
+								var content = JSON.parse(request.responseText);
+								resolve(content);
+							} catch(err) {
+								reject(err);
+							}
+							break;
+						case 400:
+							try {
+								var content = JSON.parse(request.responseText);
+								reject(content.status);
+							} catch (err) {
+								reject(err);
+							}
+							break;
+						case 0:
+							reject('Cannot connect to server.');
+						default:
+							reject(`${request.statusCode}: ${request.statusText}`);
+					}
+				}
+			};
+			console.log('request:', url, method, payload);
+			request.open(method, url);
+			request.send(payload);
+		});
+	}
+
 	fillList(list, elem, prefix, changeListener) {
 		list.forEach((item, i) => {
 			let li = document.createElement('li');
@@ -19,25 +54,79 @@ class Controller {
 
 			li.appendChild(label);
 			elem.appendChild(li);
+			if (i === 0) {
+				input.checked = 'true';
+				input.dispatchEvent(new Event('change'));
+			}
 		});
 	}
 
 	applyLayout() {
 		let layout = document.querySelector('input[name="layouts"]:checked').value;
-		console.log(`Apply layout: ${layout}`);
+		console.log(`Apply layout: ${this.layouts[layout].name}`);
+
+		this.ajax(`${window.config.api}/${this.layouts[layout].name}`, 'GET').then(
+			() => {
+				console.log('success');
+				this.state.layout = layout;
+			},
+			(err) => {
+				console.log('error', err);
+			}
+		);
 	}
 
-	commandStart() {
-		let command = document.querySelector('input[name="commands":checked').value;
-		console.log(`Start command: ${command}`);
+	startCommand() {
+		let command_id = document.querySelector('input[name="commands"]:checked').value;
+		let command = this.commands[command_id];
+		console.log(`Start command: ${command_id}`);
+
+		let args = [];
+
+		let ret = command.args.every((val, i) => {
+			let elem = document.querySelector(`#arg_${i}`);
+			let arg = {};
+			arg.name = val.name;
+			switch(val.type) {
+				case 'string':
+					arg.value = elem.value;
+					break;
+				case 'enum':
+					if (val.options.indexOf(elem.value) < 0) {
+						console.log(`error enum value not found for ${val.name}.`);
+						return false;
+					} else {
+						arg.value = elem.value;
+					}
+					break;
+			}
+			args.push(arg);
+			return true;
+		});
+
+		if (!ret) {
+			return;
+		}
+
+		let options = {
+			fullscreen: document.querySelector('#fullscreen').checked ? 1 : 0,
+			frame: parseInt(document.querySelector('#cmdFrame').value, 10),
+			arguments: args
+		};
+
+		this.ajax(`${window.config.api}/command/${command.name}`, 'POST', options).then(
+		(ans) => {
+			console.log('success');
+		},
+		(err) => {
+			console.log(err);
+		});
 	}
 
 	layoutChanged(event) {
 
 		let layout = this.layouts[event.target.value];
-
 		let canvas = document.querySelector('#preview');
-		console.log(canvas);
 		let ctx = canvas.getContext('2d');
 		canvas.width = layout.xres || 800;
 		canvas.height = layout.yres || 600;
@@ -50,7 +139,6 @@ class Controller {
 
 		layout.frames = layout.frames || [];
 		layout.frames.forEach((frame) => {
-			console.log(frame.ul_x, frame.ul_y, frame.lr_x - frame.ul_x, frame.lr_y - frame.ul_y);
 			ctx.rect(frame.ul_x, frame.ul_y, frame.lr_x - frame.ul_x, frame.lr_y - frame.ul_y);
 			ctx.stroke();
 			ctx.fillText(`${frame.id}`,
@@ -59,12 +147,24 @@ class Controller {
 		});
 	}
 
-	cmdChanged(event) {
-		console.log(event.target.value);
+	fillFrameBox() {
+		let box = document.querySelector('#cmdFrame');
+		box.innerHTML = '';
+		let layout = this.layouts[this.state.layout];
 
+		layout.frames.forEach((frame, i) => {
+			let option = document.createElement('option');
+			option.value = i;
+			option.textContent = frame.id;
+			box.appendChild(option);
+		});
+	}
+
+	cmdChanged(event) {
 		let cmd = this.commands[event.target.value];
 
 		document.querySelector('#cmdHeadline').textContent = cmd.name;
+		this.fillFrameBox();
 
 		let cmd_args = document.querySelector('#cmd_args');
 		cmd_args.innerHTML = '';
@@ -76,17 +176,16 @@ class Controller {
 			label.setAttribute('for', `arg_${i}`);
 			label.textContent = `${option.name}:`;
 			let input = document.createElement('input');
+			input.id = `arg_${i}`;
+			input['data-option'] = option;
 			switch(option.type) {
 				case 'string':
-					input.id = 'arg_${i}';
 					input.type = 'text';
-					input['data-option'] = option;
+					input.placeholder = option.hint;
 					break;
 				case 'enum':
-					input.id = `arg_${i}`;
 					input.type = 'text';
 					input.setAttribute('list', `arglist_${i}`);
-					input['data-option'] = option;
 
 					let datalist = document.createElement('datalist');
 					datalist.id = `arglist_${i}`;
@@ -104,10 +203,7 @@ class Controller {
 		});
 	}
 
-	init() {
-		this.layouts = [];
-		this.commands = [];
-		// dummies
+	createDummyLayouts() {
 		for (let i = 0; i < 10; i++) {
 			this.layouts.push(
 				{
@@ -122,6 +218,11 @@ class Controller {
 					]
 				}
 			);
+		}
+	}
+
+	createDummyCommands() {
+		for (let i = 0; i < 10; i++) {
 			this.commands.push(
 				{
 					name: `Command ${i}`,
@@ -132,13 +233,36 @@ class Controller {
 				}
 			);
 		}
+	}
 
-		this.fillList(this.layouts, document.querySelector('#layout_items'), 'layout', this.layoutChanged.bind(this));
-		this.fillList(this.commands, document.querySelector('#command_items'), 'command', this.cmdChanged.bind(this));
+	constructor() {
+		this.layouts = [];
+		this.commands = [];
+		this.state = {
+			layout: 0
+		};
+		// dummies
+		this.ajax(`${window.config.api}/layouts`, 'GET').then((layouts) => {
+			this.layouts = layouts;
+			this.fillList(this.layouts, document.querySelector('#layout_items'), 'layout', this.layoutChanged.bind(this));
+		},
+		(err) => {
+			console.log(err);
+			this.createDummyLayouts();
+			this.fillList(this.layouts, document.querySelector('#layout_items'), 'layout', this.layoutChanged.bind(this));
+		});
+		this.ajax(`${window.config.api}/commands`, `GET`).then((commands) => {
+			this.commands = commands;
+			this.fillList(this.commands, document.querySelector('#command_items'), 'command', this.cmdChanged.bind(this));
+		},
+		(err) => {
+			console.log(err);
+			this.createDummyCommands();
+			this.fillList(this.commands, document.querySelector('#command_items'), 'command', this.cmdChanged.bind(this));
+		});
 	}
 }
 
 window.onload = () => {
 	window.controller = new Controller();
-	window.controller.init();
 };

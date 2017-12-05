@@ -29,22 +29,12 @@ button {
 	box-shadow: 1px 1px #aaa;
 }
 
+button:hover {
+	cursor: pointer;
+}
+
 section {
 	display: none;
-}
-
-.content {
-	width: 90%;
-	margin: 0 auto;
-	height: 100%;
-}
-
-.center {
-	display: flex;
-}
-
-.layouts_actions {
-	margin: 0 auto;
 }
 
 .grid_right {
@@ -55,6 +45,8 @@ section {
 
 .grid_action {
 	padding-top: 1em;
+	width: 80%;
+	margin: 0 auto;
 }
 
 h3 {
@@ -72,14 +64,19 @@ h3 {
 
 .grid_items li label {
 	list-style: none;
-	border-top: solid black 1px;
-	padding: 5em 1em;
+	border-top: 1px solid #ddd;
+	padding: 2em 1em;
 	display: block;
+}
+
+.grid_items li:last-of-type label {
+	border-bottom: 1px solid #ddd;
 }
 
 input[name="layouts"]:checked ~ label,
 input[name="commands"]:checked ~ label {
 	border-left: 1px solid white;
+	border-right: 2px solid orange;
 }
 
 main {
@@ -93,7 +90,9 @@ main {
 section {
   display: none;
   height: 90%;
-  border-top: 1px solid #ddd;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  border-top-left-radius: 0;
 }
 
 input[type="radio"] {
@@ -140,4 +139,71 @@ canvas {
 #tabc:checked ~ #commands {
 	display: grid;
 	grid-template-columns: 2fr 1fr;
+}
+
+.form_elem {
+	display: block;
+}
+
+input[type="checkbox"] {
+	position: relative;
+	vertical-align: -10px;
+	border: none;
+	-webkit-appearance: none;
+	appearance: none;
+	cursor: pointer;
+}
+
+input[type="checkbox"]:after {
+	content: "";
+	display: block;
+	width: 18px;
+	height: 18px;
+	margin-top: -2px;
+	margin-right: 5px;
+	border: 2px solid #666;
+	border-radius: 2px;
+	-webkit-transition: 240ms;
+	-o-transition: 240ms;
+	transition: 240ms;
+}
+
+input[type="checkbox"]:checked:before {
+	content: "";
+	position: absolute;
+	top: 0;
+	left: 6px;
+	display: table;
+	width: 6px;
+	height: 12px;
+	border: 2px solid #fff;
+	border-top-width: 0;
+	border-left-width: 0;
+	-webkit-transform: rotate(45deg);
+	-ms-transform: rotate(45deg);
+	transform: rotate(45deg);
+}
+
+input[type="checkbox"]:checked:after {
+	background-color: #2196F3;
+	border-color: #2196F3;
+}
+
+select {
+	padding: 5px;
+	height: 3rem;
+	width: 100%;
+	font-size: 13px;
+	line-height: 1.846;
+	color: #666;
+	background-color: rgba(255, 255, 255, 0);
+	background-image: none;
+	border: 1px solid #ddd;
+	border-radius: 3px;
+	-webkit-box-shadow: inset 0 1px 1px rgba(0,0,0,0.075);
+	box-shadow: inset 0 1px 1px rgba(0,0,0,0.075);
+	-webkit-transition: border-color ease-in-out 0.15s, box-shadow ease-in-out 0.15s;
+	-o-transition: border-color ease-in-out 0.15s, box-shadow ease-in-out 0.15s;
+	transition: border-color ease-in-out 0.15s, box-shadow ease-in-out 0.15s;
+
 }
