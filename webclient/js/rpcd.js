@@ -33,7 +33,30 @@ class Controller {
 	}
 
 	layoutChanged(event) {
-		console.log(event.target.value);
+
+		let layout = this.layouts[event.target.value];
+
+		let canvas = document.querySelector('#preview');
+		console.log(canvas);
+		let ctx = canvas.getContext('2d');
+		canvas.width = layout.xres || 800;
+		canvas.height = layout.yres || 600;
+
+		ctx.lineWidth = 4;
+		ctx.strokeStyle = '#000000';
+		ctx.font = '10em Georgia';
+		ctx.textAlign = 'center';
+		ctx.textBaseline = 'middle';
+
+		layout.frames = layout.frames || [];
+		layout.frames.forEach((frame) => {
+			console.log(frame.ul_x, frame.ul_y, frame.lr_x - frame.ul_x, frame.lr_y - frame.ul_y);
+			ctx.rect(frame.ul_x, frame.ul_y, frame.lr_x - frame.ul_x, frame.lr_y - frame.ul_y);
+			ctx.stroke();
+			ctx.fillText(`${frame.id}`,
+				frame.ul_x + ((frame.lr_x - frame.ul_x)/2),
+				frame.ul_y + ((frame.lr_y - frame.ul_y)/2));
+		});
 	}
 
 	cmdChanged(event) {
@@ -87,7 +110,17 @@ class Controller {
 		// dummies
 		for (let i = 0; i < 10; i++) {
 			this.layouts.push(
-				{name: `Layout ${i}`}
+				{
+					name: `Layout ${i}`,
+					xres: 1600,
+					yres: 1200,
+					frames: [
+						{id: i+10, ul_x: 0, ul_y:0, lr_x:300, lr_y: 400},
+						{id: i+20, ul_x: 300, ul_y: 0, lr_x: 600, lr_y: 400},
+						{id: i+30, ul_x: 600, ul_y: 0, lr_x: 1600, lr_y: 400},
+						{id: i+40, ul_x: 0, ul_y: 400, lr_x: 1600, lr_y: 1200}
+					]
+				}
 			);
 			this.commands.push(
 				{

@@ -14,19 +14,19 @@
 	</head>
 	<body>
 		<main id="content">
-				<input id="tabl" type="radio" name="tabs" checked />
-				<label class="tab_button" for="tabl">Layouts</label>
-				
-				<input id="tabc" type="radio" name="tabs" />
-				<label class="tab_button" for="tabc">Commands</label>
+			<input id="tabl" type="radio" name="tabs" checked />
+			<label class="tab_button" for="tabl">Layouts</label>
+
+			<input id="tabc" type="radio" name="tabs" />
+			<label class="tab_button" for="tabc">Commands</label>
 
 			<section id="layouts">
-				<div id="layouts_left">
+				<div id="layouts_left" class="grid_left">
 					<div id="canvas">
-						<canvas></canvas>
+						<canvas id="preview"></canvas>
 					</div>
 
-					<div id="layouts_actions">
+					<div id="layouts_actions" class="grid_action">
 						<button onclick="window.controller.applyLayout();">apply</button>
 					</div>
 				</div>
@@ -37,11 +37,11 @@
 				</div>
 			</section>
 			<section id="commands">
-				<div id="commands_left">
+				<div id="commands_left" class="grid_left">
 
 					<div>
 						<h3 id="cmdHeadline">-None-</h3>
-						<label for="fullscreen">Fullscreen
+						<label for="fullscreen">Fullscreen:
 							<input type="checkbox" id="fullscreen" />
 						</label>
 
@@ -52,7 +52,7 @@
 						</ul>
 					</div>
 
-					<div id="commands_actions">
+					<div id="commands_actions" class="grid_action">
 						<button onclick="window.controller.startCommand();">Start</button>
 						<button onclick="window.controller.stop();">Stop</button>
 					</div>
