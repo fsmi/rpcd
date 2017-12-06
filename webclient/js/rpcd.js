@@ -186,6 +186,8 @@ class Controller {
 				case 'enum':
 					input.type = 'text';
 					input.setAttribute('list', `arglist_${i}`);
+					input.pattern = option.options.join('|');
+					input.placeholder = ' ';
 
 					let datalist = document.createElement('datalist');
 					datalist.id = `arglist_${i}`;
@@ -244,22 +246,43 @@ class Controller {
 		// dummies
 		this.ajax(`${window.config.api}/layouts`, 'GET').then((layouts) => {
 			this.layouts = layouts;
-			this.fillList(this.layouts, document.querySelector('#layout_items'), 'layout', this.layoutChanged.bind(this));
+			this.fillList(this.layouts,
+				document.querySelector('#layout_items'),
+				'layout',
+				this.layoutChanged.bind(this));
 		},
 		(err) => {
 			console.log(err);
 			this.createDummyLayouts();
-			this.fillList(this.layouts, document.querySelector('#layout_items'), 'layout', this.layoutChanged.bind(this));
+			this.fillList(this.layouts,
+				document.querySelector('#layout_items'),
+				'layout',
+				this.layoutChanged.bind(this));
 		});
 		this.ajax(`${window.config.api}/commands`, `GET`).then((commands) => {
 			this.commands = commands;
-			this.fillList(this.commands, document.querySelector('#command_items'), 'command', this.cmdChanged.bind(this));
+			this.fillList(this.commands,
+				document.querySelector('#command_items'),
+				'command',
+				this.cmdChanged.bind(this));
 		},
 		(err) => {
 			console.log(err);
 			this.createDummyCommands();
-			this.fillList(this.commands, document.querySelector('#command_items'), 'command', this.cmdChanged.bind(this));
+			this.fillList(this.commands,
+				document.querySelector('#command_items'),
+				'command',
+				this.cmdChanged.bind(this));
 		});
+
+		switch (window.location.hash) {
+			case '#commands':
+				document.querySelector('#tabc').checked = true;
+				break;
+			case '#layouts':
+				document.querySelector('#tabl').checked = true;
+				break;
+		}
 	}
 }
 

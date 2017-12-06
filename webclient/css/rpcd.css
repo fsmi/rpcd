@@ -189,6 +189,44 @@ input[type="checkbox"]:checked:after {
 	border-color: #2196F3;
 }
 
+input[type="text"] {
+	padding: 5px 1em;
+	border-radius: 3px;
+	background-color: white;
+	-webkit-box-shadow: inset 0 1px 1px rgba(0,0,0,0.075);
+	box-shadow: inset 0 1px 1px rgba(0,0,0,0.075);
+	-webkit-transition: border-color ease-in-out 0.15s, box-shadow ease-in-out 0.15s;
+	-o-transition: border-color ease-in-out 0.15s, box-shadow ease-in-out 0.15s;
+	transition: border-color ease-in-out 0.15s, box-shadow ease-in-out 0.15s;
+	border: 1px solid #ddd;
+	font-size: 13px;
+	line-height: 1.846;
+	width: 90%;
+	margin: 0 auto;
+}
+
+input:invalid {
+	border: 1px solid red;
+}
+
+input:valid:not(:placeholder-shown) {
+	border: 1px solid green;
+}
+
+.ul li {
+	text-align: center;
+}
+
+.ul li label {
+	text-align: left;
+	display: block;
+}
+
+ul {
+	padding: 0;
+	margin: 0;
+}
+
 select {
 	padding: 5px;
 	height: 3rem;
