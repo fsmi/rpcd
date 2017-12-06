@@ -109,7 +109,7 @@ main > input:checked + label {
   border-bottom: 1px solid #fff;
 }
 
-label:hover {
+label:hover, #reset:hover {
   color: #888;
   cursor: pointer;
 }
@@ -118,7 +118,7 @@ label:hover {
 	list-style: none;
 }
 
-label {
+label, #reset {
   display: inline-block;
   margin: 0 0 -1px;
   padding: 15px 25px;
@@ -126,6 +126,23 @@ label {
   text-align: center;
   color: #bbb;
   border: 1px solid transparent;
+}
+
+#reset:hover {
+	background-color: #e51c23;
+	color: #ddd;
+}
+
+#reset {
+	text-transform: uppercase;
+	border: 1px solid #ddd;
+	float: right;
+}
+
+#status {
+	margin: 0 0 -1px;
+	padding: 15px 25px;
+	float: right;
 }
 
 canvas {
@@ -209,7 +226,7 @@ input:invalid {
 	border: 1px solid red;
 }
 
-input:valid:not(:placeholder-shown) {
+input[type='text']:valid:not(:placeholder-shown) {
 	border: 1px solid green;
 }
 
