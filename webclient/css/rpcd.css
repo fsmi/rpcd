@@ -139,6 +139,12 @@ label, #reset {
 	float: right;
 }
 
+#status {
+	margin: 0 0 -1px;
+	padding: 15px 25px;
+	float: right;
+}
+
 canvas {
 	width: 80%;
 	display: block;
@@ -220,7 +226,7 @@ input:invalid {
 	border: 1px solid red;
 }
 
-input:valid:not(:placeholder-shown) {
+input[type='text']:valid:not(:placeholder-shown) {
 	border: 1px solid green;
 }
 

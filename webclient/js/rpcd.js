@@ -34,23 +34,27 @@ class Controller {
 		});
 	}
 
+	status(text) {
+		document.querySelector('#status').textContent = text;
+	}
+
 	reset() {
 		this.ajax(`${window.config.api}/reset`, 'GET').then(
 			() => {
-				console.log('reset: success');
+				this.status('reset: success');
 			},
 			(err) => {
-				console.log(`reset: error: ${err}`);
+				this.status(`reset: error: ${err}`);
 			});
 	}
 
 	stop() {
 		this.ajax(`${window.config.api}/stop`, 'GET').then(
 			() => {
-				console.log('stop: success');
+				this.status('stop: success');
 			},
 			(err) => {
-				console.log(`stop: error: ${err}`);
+				this.status(`stop: error: ${err}`);
 			});
 	}
 
@@ -83,15 +87,15 @@ class Controller {
 
 	applyLayout() {
 		let layout = document.querySelector('input[name="layouts"]:checked').value;
-		console.log(`Apply layout: ${this.layouts[layout].name}`);
+		this.status(`Apply layout: ${this.layouts[layout].name}`);
 
 		this.ajax(`${window.config.api}/${this.layouts[layout].name}`, 'GET').then(
 			() => {
-				console.log('success');
+				this.status('applyLayout: success');
 				this.state.layout = layout;
 			},
 			(err) => {
-				console.log('error', err);
+				this.status(`applyLayout: error ${err}`);
 			}
 		);
 	}
@@ -99,7 +103,7 @@ class Controller {
 	startCommand() {
 		let command_id = document.querySelector('input[name="commands"]:checked').value;
 		let command = this.commands[command_id];
-		console.log(`Start command: ${command_id}`);
+		this.status(`Start command: ${command_id}`);
 
 		let args = [];
 
@@ -113,7 +117,7 @@ class Controller {
 					break;
 				case 'enum':
 					if (val.options.indexOf(elem.value) < 0) {
-						console.log(`error enum value not found for ${val.name}.`);
+						this.status(`error enum value not found for ${val.name}.`);
 						return false;
 					} else {
 						arg.value = elem.value;
@@ -136,10 +140,10 @@ class Controller {
 
 		this.ajax(`${window.config.api}/command/${command.name}`, 'POST', options).then(
 		(ans) => {
-			console.log('success');
+			this.status('success');
 		},
 		(err) => {
-			console.log(err);
+			this.status(err);
 		});
 	}
 
@@ -272,7 +276,7 @@ class Controller {
 				this.layoutChanged.bind(this));
 		},
 		(err) => {
-			console.log(err);
+			this.status(err);
 			this.createDummyLayouts();
 			this.fillList(this.layouts,
 				document.querySelector('#layout_items'),
@@ -287,7 +291,7 @@ class Controller {
 				this.cmdChanged.bind(this));
 		},
 		(err) => {
-			console.log(err);
+			this.status(err);
 			this.createDummyCommands();
 			this.fillList(this.commands,
 				document.querySelector('#command_items'),
