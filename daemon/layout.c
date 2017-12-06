@@ -14,6 +14,17 @@
 static size_t nlayouts = 0;
 static layout_t* layouts = NULL;
 
+size_t layout_count(){
+	return nlayouts;
+}
+
+layout_t* layout_get(size_t index){
+	if(index < nlayouts){
+		return layouts + index;
+	}
+	return NULL;
+}
+
 static int layout_parse(char* layout_file, layout_t* layout){
 	struct stat source_info;
 	size_t u, p, max_screen = 0;

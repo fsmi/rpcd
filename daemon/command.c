@@ -7,6 +7,17 @@
 size_t ncommands = 0;
 command_t* commands = NULL;
 
+size_t command_count(){
+	return ncommands;
+}
+
+command_t* command_get(size_t index){
+	if(index < ncommands){
+		return commands + index;
+	}
+	return NULL;
+}
+
 static void command_init(command_t* command){
 	command_t empty = {
 		0

@@ -12,6 +12,10 @@ typedef struct /*_ratpoison_layout_t*/ {
 	frame_t* frames;
 } layout_t;
 
+size_t layout_count();
+layout_t* layout_get(size_t index);
+layout_t* layout_find(char* name);
+
 int layout_new(char* name);
 int layout_config(char* option, char* value);
 int layout_ok();

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdbool.h>
 #include <ctype.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -9,6 +10,8 @@
 #include <netdb.h>
 #include <errno.h>
 
+#include "layout.h"
+#include "command.h"
 #include "web.h"
 
 static int listen_fd = -1;
@@ -140,10 +143,11 @@ static int web_accept(){
 	return 0;
 }
 
-static int web_send_header(http_client_t* client, char* code){
+static int web_send_header(http_client_t* client, char* code, bool json){
 	return network_send(client->fd, "HTTP/1.1 ")
 		|| network_send(client->fd, code)
 		|| network_send(client->fd, "\r\nAccess-Control-Allow-Origin: *\r\n")
+		|| (json ? network_send(client->fd, "Content-type: application/json\r\n") : 0)
 		|| network_send(client->fd, "Connection: close\r\n")
 		|| network_send(client->fd, "Server: rpcd\r\n\r\n");
 }
@@ -153,7 +157,7 @@ static int web_handle_header(http_client_t* client){
 	
 	//reject header folding
 	if(isspace(*line)){
-		web_send_header(client, "400 Bad Request");
+		web_send_header(client, "400 Bad Request", false);
 		web_disconnect(client);
 		return 0;
 	}
@@ -162,7 +166,7 @@ static int web_handle_header(http_client_t* client){
 	if(client->state == http_new){
 		if(strlen(line) < 5){
 			fprintf(stderr, "Received short HTTP initiation, rejecting\n");
-			web_send_header(client, "400 Bad Request");
+			web_send_header(client, "400 Bad Request", false);
 			web_disconnect(client);
 		}
 		else{
@@ -185,6 +189,11 @@ static int web_handle_header(http_client_t* client){
 				return 1;
 			}
 
+			//strip protocol info
+			if(strchr(client->endpoint, ' ')){
+				*(strchr(client->endpoint, ' ')) = 0;
+			}
+
 			client->state = http_headers;
 		}
 	}
@@ -195,7 +204,7 @@ static int web_handle_header(http_client_t* client){
 
 			if(client->method == http_post && !client->payload_size){
 				fprintf(stderr, "Received POST request without Content-length header, rejecting\n");
-				web_send_header(client, "400 Bad Request");
+				web_send_header(client, "400 Bad Request", false);
 				web_disconnect(client);
 			}
 		}
@@ -209,27 +218,82 @@ static int web_handle_header(http_client_t* client){
 	return 0;
 }
 
+static int web_send_commands(http_client_t* client){
+	return 0;
+}
+
+static int web_send_layouts(http_client_t* client){
+	char send_buf[RECV_CHUNK];
+	size_t layouts = layout_count(), u, p;
+	layout_t* layout = NULL;
+
+	network_send(client->fd, "[");
+	for(u = 0; u < layouts; u++){
+		layout = layout_get(u);
+
+		//dump a single layout
+		//FIXME this is kinda ugly and disregards quoting
+		snprintf(send_buf, sizeof(send_buf), "%s{name:\"%s\",xres:%zu,yres:%zu,frames:[",
+				u ? "," : "", layout->name,
+				layout->width, layout->height);
+		network_send(client->fd, send_buf);
+
+		for(p = 0; p < layout->nframes; p++){
+			snprintf(send_buf, sizeof(send_buf), "%s{id:%zu,x:%zu,y:%zu,w:%zu,h:%zu}",
+					p ? "," : "", layout->frames[p].id,
+					layout->frames[p].bbox[0], layout->frames[p].bbox[1],
+					layout->frames[p].bbox[2], layout->frames[p].bbox[3]);
+			network_send(client->fd, send_buf);
+		}
+
+		network_send(client->fd, "]}");
+	}
+	network_send(client->fd, "]");
+
+	return 0;
+}
+
+static int web_send_status(http_client_t* client){
+	return network_send(client->fd, "{msg:\"ogge wa alles\"}");
+}
+
 static int web_handle_body(http_client_t* client){
+	int rv = 0;
 	if(!strcmp(client->endpoint, "/commands")){
+		rv = web_send_header(client, "200 OK", true)
+			|| web_send_commands(client);
 	}
 	else if(!strcmp(client->endpoint, "/layouts")){
+		rv = web_send_header(client, "200 OK", true)
+			|| web_send_layouts(client);
 	}
 	else if(!strcmp(client->endpoint, "/reset")){
+		web_send_header(client, "200 OK", true);
+		//TODO total reset
 	}
 	else if(!strcmp(client->endpoint, "/stop")){
+		web_send_header(client, "200 OK", true);
+		//TODO stop all commands
 	}
 	else if(!strcmp(client->endpoint, "/status")){
+		rv = web_send_header(client, "200 OK", true)
+			|| web_send_status(client);
 	}
 	else if(!strncmp(client->endpoint, "/layout/", 8)){
+		web_send_header(client, "200 OK", true);
+		//TODO activate layout
 	}
 	else if(!strncmp(client->endpoint, "/command/", 9)){
+		web_send_header(client, "200 OK", true);
+		//TODO run command
 	}
 	else{
-		web_send_header(client, "400 Unknown Endpoint");
-		network_send(client->fd, "The requested endpoint is not supported");
+		rv = web_send_header(client, "400 Unknown Endpoint", false)
+			|| network_send(client->fd, "The requested endpoint is not supported");
 	}
+
 	web_disconnect(client);
-	return 0;
+	return rv;
 }
 
 static int web_data(http_client_t* client){

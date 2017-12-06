@@ -16,6 +16,10 @@ typedef struct /*_rpcd_command_t*/ {
 	argument_t* args;
 } command_t;
 
+size_t command_count();
+command_t* command_get(size_t index);
+command_t* command_find(char* name);
+
 int command_new(char* name);
 int command_config(char* option, char* value);
 int command_ok();
