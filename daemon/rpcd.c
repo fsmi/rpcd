@@ -14,6 +14,10 @@
 
 volatile sig_atomic_t shutdown_requested = 0;
 
+static void signal_handler(int signum){
+	shutdown_requested = 1;
+}
+
 static int usage(char* fn){
 	fprintf(stderr, "\n%s - Provide a minimal controller API for ratpoison via HTTP\n", VERSION);
 	fprintf(stderr, "Usage:\n\t%s configfile\n", fn);
@@ -37,9 +41,9 @@ int main(int argc, char** argv){
 		goto bail;
 	}
 
-	//x11_open
-	//api_open
-	
+	signal(SIGINT, signal_handler);
+	FD_ZERO(&primary);
+
 	while(!shutdown_requested){
 		FD_ZERO(&secondary);
 		max_fd = -1;

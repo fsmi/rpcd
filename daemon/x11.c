@@ -6,7 +6,7 @@
 #include "x11.h"
 
 int x11_loop(fd_set* in, fd_set* out, int* max_fd){
-	return 1;
+	return 0;
 }
 
 int x11_config(char* option, char* value){

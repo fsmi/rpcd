@@ -1,7 +1,9 @@
 #include <sys/select.h>
 
+#define RECV_CHUNK 4096
 #define LISTEN_QUEUE_LENGTH 128
 #define DEFAULT_PORT "8080"
+#define HARD_SIZE_LIMIT 10240
 
 typedef enum /*_http_method*/ {
 	method_unknown = 0,
@@ -25,6 +27,8 @@ typedef struct /*_http_client*/ {
 	size_t payload_size;
 	http_method_t method;
 	http_state_t state;
+
+	char* endpoint;
 } http_client_t;
 
 int web_loop(fd_set* in, fd_set* out, int* max_fd);
