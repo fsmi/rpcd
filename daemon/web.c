@@ -249,7 +249,7 @@ static int web_send_commands(http_client_t* client){
 			}
 			else{
 				snprintf(send_buf, sizeof(send_buf), "%s{name:\"%s\", type:\"string\", hint:\"%s\"}",
-						u ? "," : "", command->args[p].name,
+						u ? "" : ",", command->args[p].name,
 						command->args[p].additional ? command->args[p].additional[0] : "");
 			}
 			network_send(client->fd, send_buf);
