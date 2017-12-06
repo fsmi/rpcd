@@ -127,7 +127,7 @@ int config_parse(char* cfg_file){
 					}
 					break;
 				case conf_command:
-					if(layout_config(line, argument)){
+					if(command_config(line, argument)){
 						rv = 1;
 						goto bail;
 					}

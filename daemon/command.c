@@ -114,7 +114,7 @@ int command_config(char* option, char* value){
 
 	//handle additional data
 	if(new_type == arg_string){
-		cmd->args[cmd->nargs].additional = malloc(sizeof(char*));
+		cmd->args[cmd->nargs].additional = calloc(2, sizeof(char*));
 		if(!cmd->args[cmd->nargs].additional){
 			fprintf(stderr, "Failed to allocate memory\n");
 			return 1;
