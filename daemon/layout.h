@@ -1,6 +1,7 @@
 typedef struct /*_ratpoison_layout_frame*/ {
 	size_t id;
-	size_t bbox[4];
+	size_t bbox[4]; //x y w h
+	size_t screen[3]; //w h id
 } frame_t;
 
 typedef struct /*_ratpoison_layout_t*/ {

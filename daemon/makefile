@@ -1,3 +1,4 @@
+.PHONY = test
 CFLAGS ?= -g -Wall
 LDLIBS = -lX11
 
@@ -10,3 +11,6 @@ all: rpcd
 clean:
 	$(RM) $(OBJECTS)
 	$(RM) rpcd
+
+test:
+	valgrind --leak-check=full --show-leak-kinds=all ./rpcd rpcd.conf
