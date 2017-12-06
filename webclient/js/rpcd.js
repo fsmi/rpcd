@@ -34,6 +34,26 @@ class Controller {
 		});
 	}
 
+	reset() {
+		this.ajax(`${window.config.api}/reset`, 'GET').then(
+			() => {
+				console.log('reset: success');
+			},
+			(err) => {
+				console.log(`reset: error: ${err}`);
+			});
+	}
+
+	stop() {
+		this.ajax(`${window.config.api}/stop`, 'GET').then(
+			() => {
+				console.log('stop: success');
+			},
+			(err) => {
+				console.log(`stop: error: ${err}`);
+			});
+	}
+
 	fillList(list, elem, prefix, changeListener) {
 		list.forEach((item, i) => {
 			let li = document.createElement('li');
