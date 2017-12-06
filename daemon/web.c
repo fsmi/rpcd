@@ -219,6 +219,46 @@ static int web_handle_header(http_client_t* client){
 }
 
 static int web_send_commands(http_client_t* client){
+	char send_buf[RECV_CHUNK];
+	size_t commands = command_count(), u, p;
+	char** option = NULL;
+	command_t* command = NULL;
+
+	network_send(client->fd, "[");
+	for(u = 0; u < commands; u++){
+		command = command_get(u);
+
+		//dump a command
+		//FIXME escaping
+		snprintf(send_buf, sizeof(send_buf), "%s{name:\"%s\",args:[",
+				u ? "," : "", command->name);
+		network_send(client->fd, send_buf);
+
+		for(p = 0; p < command->nargs; p++){
+			if(command->args[p].type == arg_enum){
+				snprintf(send_buf, sizeof(send_buf), "%s{name:\"%s\", type:\"enum\", options:[",
+						p ? "," : "", command->args[p].name);
+				network_send(client->fd, send_buf);
+				for(option = command->args[p].additional; *option; option++){
+					snprintf(send_buf, sizeof(send_buf), "%s\"%s\"",
+							(option == command->args[p].additional) ? "" : ",",
+							*option);
+					network_send(client->fd, send_buf);
+				}
+				snprintf(send_buf, sizeof(send_buf), "]}");
+			}
+			else{
+				snprintf(send_buf, sizeof(send_buf), "%s{name:\"%s\", type:\"string\", hint:\"%s\"}",
+						u ? "," : "", command->args[p].name,
+						command->args[p].additional ? command->args[p].additional[0] : "");
+			}
+			network_send(client->fd, send_buf);
+		}
+
+		network_send(client->fd, "]}");
+	}
+	network_send(client->fd, "]");
+
 	return 0;
 }
 
