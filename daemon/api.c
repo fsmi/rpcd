@@ -292,7 +292,7 @@ static int api_send_layouts(http_client_t* client){
 			for(p = 0; p < layout->nframes; p++){
 				if(layout->frames[p].screen[2] == q){
 					snprintf(send_buf, sizeof(send_buf), "%s{\"id\":%zu,\"width\":%zu,\"height\":%zu}",
-							u ? "," : "", layout->frames[p].screen[2],
+							q ? "," : "", layout->frames[p].screen[2],
 							layout->frames[p].screen[0], layout->frames[p].screen[1]);
 					network_send(client->fd, send_buf);
 					break;
