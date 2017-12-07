@@ -264,7 +264,7 @@ static int api_send_commands(http_client_t* client){
 
 static int api_send_layouts(http_client_t* client){
 	char send_buf[RECV_CHUNK];
-	size_t layouts = layout_count(), u, p;
+	size_t layouts = layout_count(), u, p, q;
 	layout_t* layout = NULL;
 
 	network_send(client->fd, "[");
@@ -288,9 +288,9 @@ static int api_send_layouts(http_client_t* client){
 
 		network_send(client->fd, "],\"screens\":[");
 
-		for(u = 0; u <= layout->max_screen; u++){
+		for(q = 0; q <= layout->max_screen; q++){
 			for(p = 0; p < layout->nframes; p++){
-				if(layout->frames[p].screen[2] == u){
+				if(layout->frames[p].screen[2] == q){
 					snprintf(send_buf, sizeof(send_buf), "%s{\"id\":%zu,\"width\":%zu,\"height\":%zu}",
 							u ? "," : "", layout->frames[p].screen[2],
 							layout->frames[p].screen[0], layout->frames[p].screen[1]);
@@ -308,7 +308,10 @@ static int api_send_layouts(http_client_t* client){
 }
 
 static int api_send_status(http_client_t* client){
-	return network_send(client->fd, "{\"msg\":\"ogge wa alles\"}");
+	char send_buf[RECV_CHUNK];
+	snprintf(send_buf, sizeof(send_buf), "{\"layouts\":%zu, \"commands\":%zu}",
+			layout_count(), command_count());
+	return network_send(client->fd, send_buf);
 }
 
 static int api_handle_body(http_client_t* client){
