@@ -73,10 +73,14 @@ h3 {
 	border-bottom: 1px solid #ddd;
 }
 
+input[name="layouts"]:checked ~ span,
+input[name="commands"]:checked ~ span {
+	border-right: 2px solid orange;
+}
+
 input[name="layouts"]:checked ~ label,
 input[name="commands"]:checked ~ label {
 	border-left: 1px solid white;
-	border-right: 2px solid orange;
 }
 
 main {
@@ -139,12 +143,6 @@ label, #reset {
 	float: right;
 }
 
-#status {
-	margin: 0 0 -1px;
-	padding: 15px 25px;
-	float: right;
-}
-
 canvas {
 	max-width: 30em;
 	display: block;
@@ -161,6 +159,24 @@ canvas {
 	padding: 1em;
 	flex-shrink: 1;
 }
+
+.grid_items li {
+	display: grid;
+	grid-template-columns: 1fr 5em;
+}
+
+.stopButton {
+    border: 1px solid #ddd;
+    padding: 2em 1em;
+	text-transform: uppercase;
+}
+
+.stopButton:hover {
+	background-color: #ddd;
+    cursor: pointer;
+	color: #555;
+}
+
 
 #tabl:checked ~ #layouts,
 #tabc:checked ~ #commands {

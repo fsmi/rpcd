@@ -24,7 +24,7 @@ class Controller {
 						case 0:
 							reject('Cannot connect to server.');
 						default:
-							reject(`${request.statusCode}: ${request.statusText}`);
+							reject(`${request.status}: ${request.statusText}`);
 					}
 				}
 			};
@@ -61,7 +61,7 @@ class Controller {
 	fillList(list, elem, prefix, changeListener) {
 		list.forEach((item, i) => {
 			let li = document.createElement('li');
-
+			li.id = `li_${prefix}_${i}`;
 			let input = document.createElement('input');
 			input.value = i;
 			input.type = 'radio';
@@ -75,14 +75,35 @@ class Controller {
 			let label = document.createElement('label');
 			label.setAttribute('for',`${prefix}_${i}`);
 			label.textContent = item.name;
+			let button;
+
+			if (prefix === 'command') {
+				button = this.createButton(`${prefix}_${i}_button`,
+					'start', () => {
+						this.startCommand(i);
+					});
+			} else {
+				button = this.createButton(`${prefix}_${i}_button`,
+					'apply', this.applyLayout.bind(this));
+			}
 
 			li.appendChild(label);
+			li.appendChild(button);
 			elem.appendChild(li);
 			if (i === 0) {
 				input.checked = 'true';
 				input.dispatchEvent(new Event('change'));
 			}
 		});
+	}
+
+	createButton(id, text, listener) {
+		let span = document.createElement('span');
+		span.classList.add('stopButton');
+		span.id = id;
+		span.textContent = text;
+		span.addEventListener('click', listener);
+		return span;
 	}
 
 	applyLayout() {
@@ -100,10 +121,9 @@ class Controller {
 		);
 	}
 
-	startCommand() {
-		let command_id = document.querySelector('input[name="commands"]:checked').value;
-		let command = this.commands[command_id];
-		this.status(`Start command: ${command_id}`);
+	startCommand(i) {
+		let command = this.commands[i];
+		this.status(`Start command: ${i}`);
 
 		let args = [];
 
@@ -289,15 +309,34 @@ class Controller {
 			);
 		}
 	}
+	getStatus() {
+		this.ajax(`${window.config.api}/status`, 'GET')
+			.then((state) => {
+				console.log(state);
+				//state.running = [0, 2];
+				if (state.running && state.running.length > 0) {
+					state.running.forEach((cmd) => {
+						console.log(cmd);
+						this.addCmdStopButton(cmd);
+					});
+				}
+			},
+			(err) => {
+				this.status(`cannot get status: ${err}`);
+				console.log(`cannot get status: ${err}`);
+		});
+	}
 
 	constructor() {
 		this.layouts = [];
 		this.commands = [];
 		this.state = {
-			layout: 0
+			layout: 0,
+			running: [0]
 		};
 		// dummies
-		this.ajax(`${window.config.api}/layouts`, 'GET').then((layouts) => {
+		let lp = this.ajax(`${window.config.api}/layouts`, 'GET');
+		lp.then((layouts) => {
 			this.layouts = layouts;
 			this.fillList(this.layouts,
 				document.querySelector('#layout_items'),
@@ -312,7 +351,8 @@ class Controller {
 				'layout',
 				this.layoutChanged.bind(this));
 		});
-		this.ajax(`${window.config.api}/commands`, `GET`).then((commands) => {
+		let cp = this.ajax(`${window.config.api}/commands`, `GET`);
+		cp.then((commands) => {
 			this.commands = commands;
 			this.fillList(this.commands,
 				document.querySelector('#command_items'),
@@ -326,6 +366,12 @@ class Controller {
 				document.querySelector('#command_items'),
 				'command',
 				this.cmdChanged.bind(this));
+		});
+
+		Promise.all(lp, cp).then(() => {
+			this.getStatus();
+		}, () => {
+			this.getStatus();
 		});
 
 		switch (window.location.hash) {

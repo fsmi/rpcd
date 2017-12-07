@@ -18,17 +18,11 @@
 
 			<input id="tabc" type="radio" name="tabs" />
 			<label class="tab_button" for="tabc">Commands</label>
-
 			<span id="reset" onclick="window.controller.reset();">Reset</span>
-			<span id="status">Ok</span>
 
 			<section id="layouts">
 				<div id="layouts_left" class="grid_left">
 					<div id="previews">
-					</div>
-
-					<div id="layouts_actions" class="grid_action">
-						<button onclick="window.controller.applyLayout();">apply</button>
 					</div>
 				</div>
 				<div id="layouts_right" class="grid_right">
@@ -55,11 +49,6 @@
 							</li>
 						</ul>
 					</div>
-
-					<div id="commands_actions" class="grid_action">
-						<button onclick="window.controller.startCommand();">Start</button>
-						<button onclick="window.controller.stop();">Stop</button>
-					</div>
 				</div>
 				<div id="commands_right" class="grid_right">
 					<h3>Available Commands:</h3>
@@ -67,6 +56,7 @@
 					</ul>
 				</div>
 			</section>
+			<span id="status">Ok</span>
 		</div>
 	</body>
 </html>
