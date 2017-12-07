@@ -29,6 +29,17 @@ command_t* command_find(char* name){
 }
 
 int command_run(command_t* command, char* data, size_t data_len){
+	command_instance_t instance = {
+		.command = command
+	};
+
+	//TODO check if command already running
+	//TODO parse arguments, for enums: check validity
+	//TODO x11_select_frame(frame_id);
+	//TODO if(fullscreen){
+	//TODO 	x11_fullscreen();
+	//TODO }
+	//return command_execute(instance);
 	fprintf(stderr, "Running %s with %zu bytes of options %s\n", command->name, data_len, data);
 	return 0;
 }
