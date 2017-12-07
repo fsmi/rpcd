@@ -230,13 +230,13 @@ static int api_send_commands(http_client_t* client){
 
 		//dump a command
 		//FIXME escaping
-		snprintf(send_buf, sizeof(send_buf), "%s{name:\"%s\",args:[",
+		snprintf(send_buf, sizeof(send_buf), "%s{\"name\":\"%s\",\"args\":[",
 				u ? "," : "", command->name);
 		network_send(client->fd, send_buf);
 
 		for(p = 0; p < command->nargs; p++){
 			if(command->args[p].type == arg_enum){
-				snprintf(send_buf, sizeof(send_buf), "%s{name:\"%s\", type:\"enum\", options:[",
+				snprintf(send_buf, sizeof(send_buf), "%s{\"name\":\"%s\", \"type\":\"enum\", \"options\":[",
 						p ? "," : "", command->args[p].name);
 				network_send(client->fd, send_buf);
 				for(option = command->args[p].additional; *option; option++){
@@ -248,7 +248,7 @@ static int api_send_commands(http_client_t* client){
 				snprintf(send_buf, sizeof(send_buf), "]}");
 			}
 			else{
-				snprintf(send_buf, sizeof(send_buf), "%s{name:\"%s\", type:\"string\", hint:\"%s\"}",
+				snprintf(send_buf, sizeof(send_buf), "%s{\"name\":\"%s\", \"type\":\"string\", \"hint\":\"%s\"}",
 						u ? "" : ",", command->args[p].name,
 						command->args[p].additional ? command->args[p].additional[0] : "");
 			}
@@ -273,13 +273,13 @@ static int api_send_layouts(http_client_t* client){
 
 		//dump a single layout
 		//FIXME this is kinda ugly and disregards quoting
-		snprintf(send_buf, sizeof(send_buf), "%s{name:\"%s\",xres:%zu,yres:%zu,frames:[",
+		snprintf(send_buf, sizeof(send_buf), "%s{\"name\":\"%s\",\"xres\":%zu,\"yres\":%zu,\"frames\":[",
 				u ? "," : "", layout->name,
 				layout->width, layout->height);
 		network_send(client->fd, send_buf);
 
 		for(p = 0; p < layout->nframes; p++){
-			snprintf(send_buf, sizeof(send_buf), "%s{id:%zu,x:%zu,y:%zu,w:%zu,h:%zu}",
+			snprintf(send_buf, sizeof(send_buf), "%s{\"id\":%zu,\"x\":%zu,\"y\":%zu,\"w\":%zu,\"h\":%zu}",
 					p ? "," : "", layout->frames[p].id,
 					layout->frames[p].bbox[0], layout->frames[p].bbox[1],
 					layout->frames[p].bbox[2], layout->frames[p].bbox[3]);
@@ -294,7 +294,7 @@ static int api_send_layouts(http_client_t* client){
 }
 
 static int api_send_status(http_client_t* client){
-	return network_send(client->fd, "{msg:\"ogge wa alles\"}");
+	return network_send(client->fd, "{\"msg\":\"ogge wa alles\"}");
 }
 
 static int api_handle_body(http_client_t* client){
