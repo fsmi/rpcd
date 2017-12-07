@@ -48,8 +48,8 @@ class Controller {
 			});
 	}
 
-	stop() {
-		this.ajax(`${window.config.api}/stop`, 'GET').then(
+	stopCommand(i) {
+		this.ajax(`${window.config.api}/stop/${this.commands[i].name}`, 'GET').then(
 			() => {
 				this.status('stop: success');
 			},
@@ -78,7 +78,13 @@ class Controller {
 			let button;
 
 			if (prefix === 'command') {
-				button = this.createButton(`${prefix}_${i}_button`,
+				button = this.createButton(`${prefix}_${i}_stop`,
+					'stop', () => {
+						this.stopCommand(i);
+					});
+				button.classList.add('hidden');
+				li.appendChild(button);
+				button = this.createButton(`${prefix}_${i}_start`,
 					'start', () => {
 						this.startCommand(i);
 					});
@@ -313,11 +319,21 @@ class Controller {
 		this.ajax(`${window.config.api}/status`, 'GET')
 			.then((state) => {
 				console.log(state);
-				//state.running = [0, 2];
 				if (state.running && state.running.length > 0) {
-					state.running.forEach((cmd) => {
-						console.log(cmd);
-						this.addCmdStopButton(cmd);
+					this.commands.forEach((elem) => {
+						let id = state.running.findIndex((val) => {
+							return val === elem.name;
+						});
+
+						let elemStart = document.querySelector(`#command_${id}_start`);
+						let elemStop = document.querySelector(`#command_${id}_stop`);
+						if (id) {
+							elemStart.classList.add('hidden');
+							elemStop.classList.remove('hidden');
+						} else {
+							elemStop.classList.remove('hidden');
+							elemStart.classList.add('hidden');
+						}
 					});
 				}
 			},
