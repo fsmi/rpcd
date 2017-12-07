@@ -51,57 +51,63 @@ static int command_verify_enum(argument_t* arg, char* value){
 }
 
 static int command_parse_json(command_t* command, command_instance_t* instance, ejson_struct* ejson) {
-		ejson_struct* frame_info = ejson_find_key(ejson, "frame", false);
-		ejson_struct* fullscreen_info = ejson_find_key(ejson, "fullscreen", false);
-		ejson_struct* args = ejson_find_key(ejson, "arguments", false);
-		ejson_struct* arg;
-		size_t u;
-		argument_t* cmd_arg;
+	ejson_struct* frame_info = ejson_find_key(ejson, "frame", true);
+	ejson_struct* fullscreen_info = ejson_find_key(ejson, "fullscreen", true);
+	ejson_struct* args = ejson_find_key(ejson, "arguments", true);
+	ejson_struct* arg;
+	size_t u;
+	argument_t* cmd_arg;
 
-		if(frame_info){
-			int frame_id = -1;
-			if (ejson_get_int(frame_info, &frame_id) != EJSON_OK){
-				fprintf(stderr, "Failed to parse frame parameter\n");
-			}
-			else{
-				x11_select_frame(frame_id);
-			}
+	if(frame_info){
+		int frame_id = -1;
+		if (ejson_get_int(frame_info, &frame_id) != EJSON_OK){
+			fprintf(stderr, "Failed to parse frame parameter\n");
 		}
-
-		if(fullscreen_info){
-			int fullscreen = 0;
-			if (ejson_get_int(fullscreen_info, &fullscreen) != EJSON_OK) {
-				fprintf(stderr, "Failed to parse fullscreen parameter\n");
-			}
-			else if(fullscreen){
-				x11_fullscreen();
-				instance->restore_layout = 1;
-			}
+		else{
+			x11_select_frame(frame_id);
 		}
+	}
+	else{
+		fprintf(stderr, "No frame info supplied\n");
+	}
 
-		if(command->nargs){
-			if(!args){
-				fprintf(stderr, "No arguments supplied\n");
-				return 1;
-			}
-			for (u = 0; u < command->nargs; u++) {
-				cmd_arg = command->args + u;
-				arg = ejson_find_key(args, cmd_arg->name, false);
-				if(arg){
-					if (ejson_get_string(arg, &instance->arguments[u]) != EJSON_OK) {
-						fprintf(stderr, "Failed to fetch assigned value for argument %s\n", cmd_arg->name);
-						return 1;
-					}
+	if(fullscreen_info){
+		int fullscreen = 0;
+		if (ejson_get_int(fullscreen_info, &fullscreen) != EJSON_OK) {
+			fprintf(stderr, "Failed to parse fullscreen parameter\n");
+		}
+		else if(fullscreen){
+			x11_fullscreen();
+			instance->restore_layout = 1;
+		}
+	}
+	else{
+		fprintf(stderr, "No fullscreen info supplied\n");
+	}
 
-					if (cmd_arg->type == arg_enum && command_verify_enum(cmd_arg, instance->arguments[u])) {
-						fprintf(stderr, "Value of %s is not a valid for enum type\n", cmd_arg->name);
-						return 1;
-					}
+	if(command->nargs){
+		if(!args){
+			fprintf(stderr, "No arguments supplied\n");
+			return 1;
+		}
+		for (u = 0; u < command->nargs; u++) {
+			cmd_arg = command->args + u;
+			arg = ejson_find_key(args, cmd_arg->name, true);
+			if(arg){
+				if (ejson_get_string(arg, &instance->arguments[u]) != EJSON_OK) {
+					fprintf(stderr, "Failed to fetch assigned value for argument %s\n", cmd_arg->name);
+					return 1;
+				}
+
+				if(cmd_arg->type == arg_enum && command_verify_enum(cmd_arg, instance->arguments[u])) {
+					fprintf(stderr, "Value of %s is not a valid for enum type\n", cmd_arg->name);
+					return 1;
 				}
 			}
 		}
+	}
 
-		return 0;
+	return 0;
 }
 
 int command_run(command_t* command, char* data, size_t data_len){

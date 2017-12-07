@@ -3,6 +3,7 @@
 
 int x11_activate_layout(layout_t* layout);
 int x11_fullscreen();
+int x11_rollback();
 int x11_select_frame(size_t frame_id);
 
 int x11_loop(fd_set* in, fd_set* out, int* max_fd);

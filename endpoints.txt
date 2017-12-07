@@ -36,6 +36,14 @@ GET /layouts
 GET/POST /status
 	Get status information on the daemon, such as the
 	current layout and running commands
+	Response format:
+		{
+			layout:"name",
+			running:[
+				"command1",
+				...
+			]
+		}
 
 GET/POST /reset
 	Restore initial state, including layout
