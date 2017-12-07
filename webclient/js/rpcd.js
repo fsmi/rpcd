@@ -110,7 +110,7 @@ class Controller {
 		let layout = document.querySelector('input[name="layouts"]:checked').value;
 		this.status(`Apply layout: ${this.layouts[layout].name}`);
 
-		this.ajax(`${window.config.api}/${this.layouts[layout].name}`, 'GET').then(
+		this.ajax(`${window.config.api}/layout/${this.layouts[layout].name}`, 'GET').then(
 			() => {
 				this.status('applyLayout: success');
 				this.state.layout = layout;

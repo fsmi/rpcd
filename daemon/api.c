@@ -346,6 +346,7 @@ static int api_handle_body(http_client_t* client){
 		}
 		else{
 			api_send_header(client, "200 OK", false);
+			network_send(client->fd, "{}");
 		}
 	}
 	else if(!strncmp(client->endpoint, "/command/", 9)){
@@ -361,6 +362,7 @@ static int api_handle_body(http_client_t* client){
 		}
 		else{
 			api_send_header(client, "200 OK", false);
+			network_send(client->fd, "{}");
 		}
 	}
 	else{
