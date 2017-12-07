@@ -28,9 +28,9 @@ class Controller {
 					}
 				}
 			};
-			console.log('request:', url, method, payload);
+			console.log('request:', url, method, JSON.stringify(payload));
 			request.open(method, url);
-			request.send(payload);
+			request.send(JSON.stringify(payload));
 		});
 	}
 
