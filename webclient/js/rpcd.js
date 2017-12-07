@@ -150,24 +150,46 @@ class Controller {
 	layoutChanged(event) {
 
 		let layout = this.layouts[event.target.value];
-		let canvas = document.querySelector('#preview');
-		let ctx = canvas.getContext('2d');
-		canvas.width = layout.xres || 800;
-		canvas.height = layout.yres || 600;
+		let canvas = document.querySelector('#previews');
+		canvas.innerHTML = '';
+		let screens = {};
 
-		ctx.lineWidth = 4;
-		ctx.strokeStyle = '#000000';
-		ctx.font = '10em Georgia';
-		ctx.textAlign = 'center';
-		ctx.textBaseline = 'middle';
+		layout.screens = layout.screens || [];
+		layout.screens.forEach((screen) => {
+			let div = document.createElement('div');
+			let c = document.createElement('canvas');
+			c.width = screen.width;
+			c.height = screen.height;
+			div.appendChild(c);
+			canvas.appendChild(div);
+			let ctx = c.getContext('2d');
+			ctx.lineWidth = 10;
+			ctx.strokeStyle = '#000000';
+			ctx.font = '10em Georgia';
+			ctx.textAlign = 'center';
+			ctx.textBaseline = 'middle';
+			screens[screen.id] = ctx;
+		});
 
 		layout.frames = layout.frames || [];
 		layout.frames.forEach((frame) => {
-			ctx.rect(frame.ul_x, frame.ul_y, frame.lr_x - frame.ul_x, frame.lr_y - frame.ul_y);
-			ctx.stroke();
-			ctx.fillText(`${frame.id}`,
-				frame.ul_x + ((frame.lr_x - frame.ul_x)/2),
-				frame.ul_y + ((frame.lr_y - frame.ul_y)/2));
+			console.log(`draw frame: ${frame.id} on screen ${frame.screen}`);
+			let ctx = screens[frame.screen];
+			if (ctx) {
+				ctx.fillStyle = '#FFFFFF';
+				ctx.globalAlpha = 0.8;
+				ctx.fillRect(frame.x, frame.y, frame.w, frame.h);
+				ctx.stroke();
+				ctx.globalAlpha = 1.0;
+				ctx.fillStyle = '#000000';
+				ctx.rect(frame.x, frame.y, frame.w, frame.h);
+				ctx.stroke();
+				ctx.fillText(`${frame.id}`,
+					frame.x + (frame.w / 2),
+					frame.y + (frame.h / 2));
+			} else {
+				console.log(`screen ${frame.screen} not defined (found in frame ${frame.id}).`);
+			}
 		});
 	}
 
@@ -234,13 +256,20 @@ class Controller {
 			this.layouts.push(
 				{
 					name: `Layout ${i}`,
-					xres: 1600,
-					yres: 1200,
+					screens: [
+						{id: 0, width: 1600, height: 1200},
+						{id: 1, width: 1600, height: 1200}
+					],
 					frames: [
-						{id: i+10, ul_x: 0, ul_y:0, lr_x:300, lr_y: 400},
-						{id: i+20, ul_x: 300, ul_y: 0, lr_x: 600, lr_y: 400},
-						{id: i+30, ul_x: 600, ul_y: 0, lr_x: 1600, lr_y: 400},
-						{id: i+40, ul_x: 0, ul_y: 400, lr_x: 1600, lr_y: 1200}
+						{id: i+10, ul_x: 0, ul_y:0, w:300, h: 400, screen: 0},
+						{id: i+20, ul_x: 300, ul_y: 0, w: 300, h: 400, screen: 0},
+						{id: i+30, ul_x: 600, ul_y: 0, w: 1000, h: 400, screen: 0},
+						{id: i+40, ul_x: 0, ul_y: 200, w: 1200, h: 800, screen: 0},
+						{id: i+10, ul_x: 0, ul_y:0, w:300, h: 400, screen: 1},
+						{id: i+20, ul_x: 300, ul_y: 0, w: 300, h: 400, screen: 1},
+						{id: i+30, ul_x: 600, ul_y: 0, w: 1000, h: 400, screen: 1},
+						{id: i+40, ul_x: 0, ul_y: 200, w: 1200, h: 800, screen: 1}
+
 					]
 				}
 			);
