@@ -12,7 +12,7 @@
 
 #include "layout.h"
 #include "command.h"
-#include "web.h"
+#include "api.h"
 
 static int listen_fd = -1;
 static size_t nclients = 0;
@@ -92,7 +92,7 @@ static int network_send(int fd, char* data){
 	return 0;
 }
 
-static void web_disconnect(http_client_t* client){
+static void api_disconnect(http_client_t* client){
 	close(client->fd);
 
 	client->fd = -1;
@@ -104,7 +104,7 @@ static void web_disconnect(http_client_t* client){
 	client->endpoint = NULL;
 }
 
-static void web_client_init(http_client_t* client){
+static void api_client_init(http_client_t* client){
 	http_client_t empty_client = {
 		0
 	};
@@ -114,7 +114,7 @@ static void web_client_init(http_client_t* client){
 	*client = empty_client;
 }
 
-static int web_accept(){
+static int api_accept(){
 	size_t u;
 	int fd = accept(listen_fd, NULL, NULL);
 
@@ -135,7 +135,7 @@ static int web_accept(){
 			fprintf(stderr, "Failed to allocate memory\n");
 			return 1;
 		}
-		web_client_init(clients + nclients);
+		api_client_init(clients + nclients);
 		nclients++;
 	}
 
@@ -143,7 +143,7 @@ static int web_accept(){
 	return 0;
 }
 
-static int web_send_header(http_client_t* client, char* code, bool json){
+static int api_send_header(http_client_t* client, char* code, bool json){
 	return network_send(client->fd, "HTTP/1.1 ")
 		|| network_send(client->fd, code)
 		|| network_send(client->fd, "\r\nAccess-Control-Allow-Origin: *\r\n")
@@ -152,13 +152,13 @@ static int web_send_header(http_client_t* client, char* code, bool json){
 		|| network_send(client->fd, "Server: rpcd\r\n\r\n");
 }
 
-static int web_handle_header(http_client_t* client){
+static int api_handle_header(http_client_t* client){
 	char* line = client->recv_buf;
 	
 	//reject header folding
 	if(isspace(*line)){
-		web_send_header(client, "400 Bad Request", false);
-		web_disconnect(client);
+		api_send_header(client, "400 Bad Request", false);
+		api_disconnect(client);
 		return 0;
 	}
 
@@ -166,8 +166,8 @@ static int web_handle_header(http_client_t* client){
 	if(client->state == http_new){
 		if(strlen(line) < 5){
 			fprintf(stderr, "Received short HTTP initiation, rejecting\n");
-			web_send_header(client, "400 Bad Request", false);
-			web_disconnect(client);
+			api_send_header(client, "400 Bad Request", false);
+			api_disconnect(client);
 		}
 		else{
 			if(!strncmp(line, "GET ", 4)){
@@ -180,7 +180,7 @@ static int web_handle_header(http_client_t* client){
 			}
 			else{
 				fprintf(stderr, "Unknown HTTP method: %s\n", line);
-				web_disconnect(client);
+				api_disconnect(client);
 				return 0;
 			}
 
@@ -204,8 +204,8 @@ static int web_handle_header(http_client_t* client){
 
 			if(client->method == http_post && !client->payload_size){
 				fprintf(stderr, "Received POST request without Content-length header, rejecting\n");
-				web_send_header(client, "400 Bad Request", false);
-				web_disconnect(client);
+				api_send_header(client, "400 Bad Request", false);
+				api_disconnect(client);
 			}
 		}
 
@@ -218,7 +218,7 @@ static int web_handle_header(http_client_t* client){
 	return 0;
 }
 
-static int web_send_commands(http_client_t* client){
+static int api_send_commands(http_client_t* client){
 	char send_buf[RECV_CHUNK];
 	size_t commands = command_count(), u, p;
 	char** option = NULL;
@@ -262,7 +262,7 @@ static int web_send_commands(http_client_t* client){
 	return 0;
 }
 
-static int web_send_layouts(http_client_t* client){
+static int api_send_layouts(http_client_t* client){
 	char send_buf[RECV_CHUNK];
 	size_t layouts = layout_count(), u, p;
 	layout_t* layout = NULL;
@@ -293,50 +293,50 @@ static int web_send_layouts(http_client_t* client){
 	return 0;
 }
 
-static int web_send_status(http_client_t* client){
+static int api_send_status(http_client_t* client){
 	return network_send(client->fd, "{msg:\"ogge wa alles\"}");
 }
 
-static int web_handle_body(http_client_t* client){
+static int api_handle_body(http_client_t* client){
 	int rv = 0;
 	if(!strcmp(client->endpoint, "/commands")){
-		rv = web_send_header(client, "200 OK", true)
-			|| web_send_commands(client);
+		rv = api_send_header(client, "200 OK", true)
+			|| api_send_commands(client);
 	}
 	else if(!strcmp(client->endpoint, "/layouts")){
-		rv = web_send_header(client, "200 OK", true)
-			|| web_send_layouts(client);
+		rv = api_send_header(client, "200 OK", true)
+			|| api_send_layouts(client);
 	}
 	else if(!strcmp(client->endpoint, "/reset")){
-		web_send_header(client, "200 OK", true);
+		api_send_header(client, "200 OK", true);
 		//TODO total reset
 	}
 	else if(!strcmp(client->endpoint, "/stop")){
-		web_send_header(client, "200 OK", true);
+		api_send_header(client, "200 OK", true);
 		//TODO stop all commands
 	}
 	else if(!strcmp(client->endpoint, "/status")){
-		rv = web_send_header(client, "200 OK", true)
-			|| web_send_status(client);
+		rv = api_send_header(client, "200 OK", true)
+			|| api_send_status(client);
 	}
 	else if(!strncmp(client->endpoint, "/layout/", 8)){
-		web_send_header(client, "200 OK", true);
+		api_send_header(client, "200 OK", true);
 		//TODO activate layout
 	}
 	else if(!strncmp(client->endpoint, "/command/", 9)){
-		web_send_header(client, "200 OK", true);
+		api_send_header(client, "200 OK", true);
 		//TODO run command
 	}
 	else{
-		rv = web_send_header(client, "400 Unknown Endpoint", false)
+		rv = api_send_header(client, "400 Unknown Endpoint", false)
 			|| network_send(client->fd, "The requested endpoint is not supported");
 	}
 
-	web_disconnect(client);
+	api_disconnect(client);
 	return rv;
 }
 
-static int web_data(http_client_t* client){
+static int api_data(http_client_t* client){
 	ssize_t u, bytes_recv, bytes_left = client->data_allocated - client->recv_offset;
 	if(bytes_left < RECV_CHUNK){
 		client->recv_buf = realloc(client->recv_buf, (client->data_allocated + RECV_CHUNK) * sizeof(char));
@@ -355,7 +355,7 @@ static int web_data(http_client_t* client){
 		return 1;
 	}
 	else if(bytes_recv == 0){
-		web_disconnect(client);
+		api_disconnect(client);
 		return 0;
 	}
 
@@ -366,7 +366,7 @@ static int web_data(http_client_t* client){
 			client->recv_buf[client->recv_offset + u] = 0;
 
 			//handle header lines
-			if(web_handle_header(client)){
+			if(api_handle_header(client)){
 				return 1;
 			}
 
@@ -385,7 +385,7 @@ static int web_data(http_client_t* client){
 	if(client->state == http_data){
 		if((client->payload_size && client->recv_offset + bytes_recv == client->payload_size) || !client->payload_size){
 			//handle the request
-			return web_handle_body(client);
+			return api_handle_body(client);
 		}
 		else{
 			fprintf(stderr, "Missing %zu bytes of payload data, waiting for input\n", client->payload_size - (client->recv_offset + bytes_recv));
@@ -396,7 +396,7 @@ static int web_data(http_client_t* client){
 	return 0;
 }
 
-int web_loop(fd_set* in, fd_set* out, int* max_fd){
+int api_loop(fd_set* in, fd_set* out, int* max_fd){
 	size_t u;
 
 	//re-select on the listen fd
@@ -405,7 +405,7 @@ int web_loop(fd_set* in, fd_set* out, int* max_fd){
 
 	if(FD_ISSET(listen_fd, in)){
 		//handle new clients
-		if(web_accept()){
+		if(api_accept()){
 			return 1;
 		}
 	}
@@ -413,7 +413,7 @@ int web_loop(fd_set* in, fd_set* out, int* max_fd){
 	for(u = 0; u < nclients; u++){
 		if(clients[u].fd >= 0 && FD_ISSET(clients[u].fd, in)){
 			//handle client data
-			if(web_data(clients + u)){
+			if(api_data(clients + u)){
 				return 1;
 			}
 		}
@@ -429,7 +429,7 @@ int web_loop(fd_set* in, fd_set* out, int* max_fd){
 	return 0;
 }
 
-int web_config(char* option, char* value){
+int api_config(char* option, char* value){
 	char* separator = value;
 	if(!strcmp(option, "bind")){
 		separator = strchr(value, ' ');
@@ -449,7 +449,7 @@ int web_config(char* option, char* value){
 	return 1;
 }
 
-int web_ok(){
+int api_ok(){
 	if(listen_fd < 0){
 		fprintf(stderr, "No listening socket for API\n");
 		return 1;
@@ -457,15 +457,15 @@ int web_ok(){
 	return 0;
 }
 
-void web_cleanup(){
+void api_cleanup(){
 	size_t u;
 	close(listen_fd);
 	listen_fd = -1;
 
 	for(u = 0; u < nclients; u++){
-		web_disconnect(clients + u);
+		api_disconnect(clients + u);
 		free(clients[u].recv_buf);
-		web_client_init(clients + u);
+		api_client_init(clients + u);
 	}
 	free(clients);
 	nclients = 0;

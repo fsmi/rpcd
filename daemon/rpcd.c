@@ -10,7 +10,7 @@
 #include "command.h"
 #include "layout.h"
 #include "x11.h"
-#include "web.h"
+#include "api.h"
 
 volatile sig_atomic_t shutdown_requested = 0;
 
@@ -49,7 +49,7 @@ int main(int argc, char** argv){
 		max_fd = -1;
 
 		//handle events on the primary set, gather new fds on secondary
-		if(web_loop(&primary, &secondary, &max_fd)){
+		if(api_loop(&primary, &secondary, &max_fd)){
 			goto bail;
 		}
 
@@ -71,7 +71,7 @@ int main(int argc, char** argv){
 	rv = EXIT_SUCCESS;
 
 bail:
-	web_cleanup();
+	api_cleanup();
 	x11_cleanup();
 	layout_cleanup();
 	command_cleanup();

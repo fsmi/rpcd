@@ -6,7 +6,7 @@
 
 #include "layout.h"
 #include "command.h"
-#include "web.h"
+#include "api.h"
 #include "x11.h"
 #include "config.h"
 
@@ -109,7 +109,7 @@ int config_parse(char* cfg_file){
 					rv = 1;
 					goto bail;
 				case conf_web:
-					if(web_config(line, argument)){
+					if(api_config(line, argument)){
 						rv = 1;
 						goto bail;
 					}
@@ -142,5 +142,5 @@ bail:
 	fclose(source);
 	free(line_raw);
 
-	return rv || command_ok() || layout_ok() || web_ok() || x11_ok();
+	return rv || command_ok() || layout_ok() || api_ok() || x11_ok();
 }

@@ -31,7 +31,7 @@ typedef struct /*_http_client*/ {
 	char* endpoint;
 } http_client_t;
 
-int web_loop(fd_set* in, fd_set* out, int* max_fd);
-int web_config(char* option, char* value);
-int web_ok();
-void web_cleanup();
+int api_loop(fd_set* in, fd_set* out, int* max_fd);
+int api_config(char* option, char* value);
+int api_ok();
+void api_cleanup();
