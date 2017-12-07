@@ -146,10 +146,20 @@ label, #reset {
 }
 
 canvas {
-	width: 80%;
+	max-width: 30em;
 	display: block;
 	margin: 0 auto;
 	border: 1px solid;
+}
+
+#previews {
+	display: flex;
+	flex-wrap: wrap;
+}
+
+#previews div {
+	padding: 1em;
+	flex-shrink: 1;
 }
 
 #tabl:checked ~ #layouts,
