@@ -247,29 +247,26 @@ class Controller {
 			let label = document.createElement('label');
 			label.setAttribute('for', `arg_${i}`);
 			label.textContent = `${option.name}:`;
-			let input = document.createElement('input');
-			input.id = `arg_${i}`;
-			input['data-option'] = option;
+			let input;
 			switch(option.type) {
-				case 'string':
-					input.type = 'text';
-					input.placeholder = option.hint;
-					break;
 				case 'enum':
-					input.type = 'text';
-					input.setAttribute('list', `arglist_${i}`);
-					input.pattern = option.options.join('|');
-					input.placeholder = ' ';
-
-					let datalist = document.createElement('datalist');
-					datalist.id = `arglist_${i}`;
+					input = document.createElement('select');
 					option.options.forEach((item) => {
 						let o = document.createElement('option');
 						o.value = item;
-						datalist.appendChild(o);
+						o.textContent = item;
+						input.appendChild(o);
 					});
-					li.appendChild(datalist);
+					break;
+				case 'string':
+				default:
+					input = document.createElement('input');
+					input.type = 'text';
+					input.placeholder = option.hint;
+					break;
 			}
+			input.id = `arg_${i}`;
+			input['data-option'] = option;
 			li.appendChild(label);
 			li.appendChild(input);
 

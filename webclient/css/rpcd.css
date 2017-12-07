@@ -241,7 +241,7 @@ input[type="checkbox"]:checked:after {
 	border-color: #2196F3;
 }
 
-input[type="text"] {
+input[type="text"], ul li select {
 	padding: 5px 1em;
 	border-radius: 3px;
 	background-color: white;
