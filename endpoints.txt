@@ -24,18 +24,22 @@ GET /layouts
 				xres:800,
 				yres:600,
 				frames:[
-					{id:1, ul_x:0, ul_y:0, lr_x:300, lr_y:400},
+					{id:1, x:0, y:0, w:300, h:400},
 					...
 				]
 			},
 			...
 		]
 
+GET/POST /status
+	Get status information on the daemon, such as the
+	current layout and running commands
+
 GET/POST /reset
 	Restore initial state, including layout
 
-GET/POST /stop
-	Stop all running commands, do not touch layout
+GET/POST /stop/name
+	Stop a running command
 
 GET/POST /layout/name
 	Activate a layout
