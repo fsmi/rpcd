@@ -23,6 +23,7 @@ typedef struct /*_command_instance*/ {
 	pid_t command_pid;
 } command_instance_t;
 
+int command_active(command_t* command);
 int command_run(command_t* command, char* posted_json, size_t data_length);
 
 size_t command_count();

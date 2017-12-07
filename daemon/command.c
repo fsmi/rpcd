@@ -7,6 +7,11 @@
 size_t ncommands = 0;
 command_t* commands = NULL;
 
+int command_active(command_t* command){
+	//TODO check for active commands
+	return 0;
+}
+
 size_t command_count(){
 	return ncommands;
 }

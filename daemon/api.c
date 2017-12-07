@@ -353,6 +353,9 @@ static int api_handle_body(http_client_t* client){
 		if(!command){
 			api_send_header(client, "400 No such command", false);
 		}
+		else if(command_active(command)){
+			api_send_header(client, "500 Already running", false);
+		}
 		else if(command_run(command, client->recv_buf, client->payload_size)){
 			api_send_header(client, "500 Failed to start", false);
 		}
