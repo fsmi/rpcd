@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "x11.h"
 #include "command.h"
 #include "easy_json.h"
 
@@ -10,6 +11,11 @@ command_t* commands = NULL;
 
 int command_active(command_t* command){
 	//TODO check for active commands
+	return 0;
+}
+
+static int command_execute(command_instance_t inst){
+	//TODO
 	return 0;
 }
 
@@ -33,78 +39,62 @@ command_t* command_find(char* name){
 	}
 	return NULL;
 }
-int check_enum_value(argument_t* arg, char* value) {
-	char* item = *arg->additional;
-	while(item != NULL) {
-		if (!strcmp(value, item)) {
+
+static int command_verify_enum(argument_t* arg, char* value){
+	char** item = NULL;
+	for(item = arg->additional; *item; item++){
+		if(!strcmp(*item, value)){
 			return 0;
 		}
-		item++;
 	}
-
 	return 1;
 }
-int command_parse_json(command_t* command, command_instance_t* instance, ejson_struct* ejson) {
-		ejson_struct* found = NULL;
 
-		found = ejson_find_key(ejson, "frame", false);
+static int command_parse_json(command_t* command, command_instance_t* instance, ejson_struct* ejson) {
+		ejson_struct* frame_info = ejson_find_key(ejson, "frame", false);
+		ejson_struct* fullscreen_info = ejson_find_key(ejson, "fullscreen", false);
+		ejson_struct* args = ejson_find_key(ejson, "arguments", false);
+		ejson_struct* arg;
+		size_t u;
+		argument_t* cmd_arg;
 
-		if (!found) {
-			fprintf(stderr, "No frame parameter not found.\n");
-			return 1;
+		if(frame_info){
+			int frame_id = -1;
+			if (ejson_get_int(frame_info, &frame_id) != EJSON_OK){
+				fprintf(stderr, "Failed to parse frame parameter\n");
+			}
+			else{
+				x11_select_frame(frame_id);
+			}
 		}
 
-		int frame = -1;
-		if (ejson_get_int(found, &frame) != EJSON_OK) {
-			fprintf(stderr, "Frame parameter is not a number.\n");
-			return 1;
+		if(fullscreen_info){
+			int fullscreen = 0;
+			if (ejson_get_int(fullscreen_info, &fullscreen) != EJSON_OK) {
+				fprintf(stderr, "Failed to parse fullscreen parameter\n");
+			}
+			else if(fullscreen){
+				x11_fullscreen();
+				instance->restore_layout = 1;
+			}
 		}
 
-		if (frame < 0) {
-			fprintf(stderr, "Frame out of range.\n");
-			return 1;
-		}
-		//TODO x11_select_frame(frame);
-
-		// fullscreen
-		found = ejson_find_key(ejson, "fullscreen", false);
-		if (found) {
-			int fullscreen = -1;
-			if (ejson_get_int(found, &fullscreen) != EJSON_OK) {
-				fprintf(stderr, "Fullscreen parameter is not a number.\n");
+		if(command->nargs){
+			if(!args){
+				fprintf(stderr, "No arguments supplied\n");
 				return 1;
 			}
-
-			if (fullscreen < 0 || fullscreen > 1) {
-				fprintf(stderr, "Fullscreen parameter is not 0 or 1.\n");
-				return 1;
-			}
-			//TODO x11_fullscreen();
-			instance->restore_layout = 1;
-		} else {
-			instance->restore_layout = 0;
-		}
-
-		if (command->nargs) {
-			found = ejson_find_key(ejson, "arguments", false);
-			ejson_struct* arg;
-			if (!found) {
-				fprintf(stderr, "Arguments parameter not found.\n");
-				return 1;
-			}
-			size_t u;
-			argument_t* cmd_arg;
 			for (u = 0; u < command->nargs; u++) {
 				cmd_arg = command->args + u;
-				arg = ejson_find_key(found, cmd_arg->name, false);
-				if (arg) {
+				arg = ejson_find_key(args, cmd_arg->name, false);
+				if(arg){
 					if (ejson_get_string(arg, &instance->arguments[u]) != EJSON_OK) {
-						fprintf(stderr, "Cannot get value of %s\n", cmd_arg->name);
+						fprintf(stderr, "Failed to fetch assigned value for argument %s\n", cmd_arg->name);
 						return 1;
 					}
 
-					if (cmd_arg->type == arg_enum && check_enum_value(cmd_arg, instance->arguments[u])) {
-						fprintf(stderr, "Value of %s is not a valid enum value.\n", cmd_arg->name);
+					if (cmd_arg->type == arg_enum && command_verify_enum(cmd_arg, instance->arguments[u])) {
+						fprintf(stderr, "Value of %s is not a valid for enum type\n", cmd_arg->name);
 						return 1;
 					}
 				}
@@ -115,36 +105,32 @@ int command_parse_json(command_t* command, command_instance_t* instance, ejson_s
 }
 
 int command_run(command_t* command, char* data, size_t data_len){
+	int rv = 1;
+	ejson_struct* ejson = NULL;
 	command_instance_t instance = {
-		.command = command
+		.command = command,
+		.arguments = calloc(command->nargs, sizeof(char*))
 	};
-	instance.arguments = calloc(command->nargs, sizeof(char*));
-	if (!instance.arguments) {
-		fprintf(stderr, "Cannot allocate memeory.\n");
+
+	if(!instance.arguments){
+		fprintf(stderr, "Failed to allocate memory\n");
 		return 1;
 	}
 
-	//return command_execute(instance);
-	fprintf(stderr, "Running %s with %zu bytes of options %s\n", command->name, data_len, data);
-
-
-	if (data_len < 1) {
-		fprintf(stderr, "Empty data string.\n");
-		return 0;
+	if(data_len < 1) {
+		fprintf(stderr, "No execution information provided for command %s\n", command->name);
+		return 1;
 	}
-	int ret = 1;
-	ejson_struct* ejson = NULL;
-	enum ejson_errors error = ejson_parse_warnings(&ejson, data, data_len, true, stderr);
 
+	enum ejson_errors error = ejson_parse_warnings(&ejson, data, data_len, true, stderr);
 	if (error == EJSON_OK) {
 		if (!command_parse_json(command, &instance, ejson)) {
-			ret = command_execute(instance);
+			rv = command_execute(instance);
 		}
 	}
 
 	ejson_cleanup(ejson);
-
-	return ret;
+	return rv;
 }
 
 static void command_init(command_t* command){
