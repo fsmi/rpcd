@@ -25,6 +25,7 @@ typedef struct /*_command_instance*/ {
 
 int command_active(command_t* command);
 int command_run(command_t* command, char* posted_json, size_t data_length);
+int command_stop(command_t* command);
 
 size_t command_count();
 command_t* command_get(size_t index);

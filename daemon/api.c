@@ -309,8 +309,8 @@ static int api_send_layouts(http_client_t* client){
 
 static int api_send_status(http_client_t* client){
 	char send_buf[RECV_CHUNK];
-	snprintf(send_buf, sizeof(send_buf), "{\"layouts\":%zu, \"commands\":%zu}",
-			layout_count(), command_count());
+	snprintf(send_buf, sizeof(send_buf),"{\"layouts\":%zu,\"commands\":%zu,\"layout\":\"%s\"}",
+			layout_count(), command_count(), x11_current_layout()->name);
 	return network_send(client->fd, send_buf);
 }
 
@@ -333,8 +333,21 @@ static int api_handle_body(http_client_t* client){
 			|| api_send_status(client);
 	}
 	else if(!strncmp(client->endpoint, "/stop/", 6)){
+		command_t* command = command_find(client->endpoint + 6);
+		if(!command){
+			api_send_header(client, "400 No such command", false);
+		}
+		else if(!command_active(command)){
+			api_send_header(client, "500 Not running", false);
+		}
+		else if(command_stop(command)){
+			api_send_header(client, "500 Failed to stop", false);
+		}
+		else{
+			api_send_header(client, "200 OK", false);
+			network_send(client->fd, "{}");
+		}
 		api_send_header(client, "200 OK", true);
-		//TODO stop a running command
 	}
 	else if(!strncmp(client->endpoint, "/layout/", 8)){
 		layout_t* layout = layout_find(client->endpoint + 8);
@@ -346,6 +359,7 @@ static int api_handle_body(http_client_t* client){
 		}
 		else{
 			api_send_header(client, "200 OK", false);
+			network_send(client->fd, "{}");
 		}
 	}
 	else if(!strncmp(client->endpoint, "/command/", 9)){
@@ -361,6 +375,7 @@ static int api_handle_body(http_client_t* client){
 		}
 		else{
 			api_send_header(client, "200 OK", false);
+			network_send(client->fd, "{}");
 		}
 	}
 	else{

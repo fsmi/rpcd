@@ -8,11 +8,12 @@
 #include "x11.h"
 
 static layout_t* default_layout = NULL;
-Display* display_handle = NULL;
-Atom rp_command, rp_command_request, rp_command_result;
+static layout_t* current_layout = NULL;
+static char* default_layout_name = NULL;
+static Display* display_handle = NULL;
+static Atom rp_command, rp_command_request, rp_command_result;
 
 static int x11_run_command(char* command){
-	fprintf(stderr, "Executing %s on rp\n", command);
 	int rv = 0;
 	XEvent ev;
 	Window root = DefaultRootWindow(display_handle);
@@ -45,7 +46,54 @@ bail:
 }
 
 int x11_activate_layout(layout_t* layout){
-	return 0;
+	size_t left = 0, frame = 0, off = 10;
+	char* layout_string = strdup("sfrestore ");
+	ssize_t required = 0;
+	int rv;
+
+	if(!layout_string){
+		fprintf(stderr, "Failed to allocate memory\n");
+		return 1;
+	}
+
+	//FIXME this generates an access violation somewhere
+	for(frame = 0; frame < layout->nframes; frame++){
+		required = snprintf(layout_string + off, left, "%s(frame :number %zu :x %zu :y %zu :width %zu :height %zu :screenw %zu :screenh %zu) %zu",
+				frame ? "," : "", layout->frames[frame].id,
+				layout->frames[frame].bbox[0], layout->frames[frame].bbox[1],
+				layout->frames[frame].bbox[2], layout->frames[frame].bbox[3],
+				layout->frames[frame].screen[0], layout->frames[frame].screen[1],
+				layout->frames[frame].screen[2]);
+
+		if(required < 0){
+			fprintf(stderr, "Failed to design layout string\n");
+			rv = 1;
+			goto bail;
+		}
+
+		if(required > left){
+			layout_string = realloc(layout_string, (strlen(layout_string) + 1 + DATA_CHUNK) * sizeof(char));
+			if(!layout_string){
+				fprintf(stderr, "Failed to allocate memory\n");
+				rv = 1;
+				goto bail;
+			}
+
+			left = DATA_CHUNK;
+			frame--;
+			continue;
+		}
+
+		off += required;
+		left -= required;
+	}
+
+	fprintf(stderr, "Generated layout: %s\n", layout_string);
+	rv = x11_run_command(layout_string);
+	current_layout = layout;
+bail:
+	free(layout_string);
+	return rv;
 }
 
 int x11_fullscreen(){
@@ -57,10 +105,23 @@ int x11_rollback(){
 }
 
 int x11_select_frame(size_t frame_id){
-	return 0;
+	char command_buffer[DATA_CHUNK];
+	snprintf(command_buffer, sizeof(command_buffer), "fselect %zu", frame_id);
+	return x11_run_command(command_buffer);
+}
+
+layout_t* x11_current_layout(){
+	return current_layout ? current_layout : default_layout;
 }
 
 int x11_loop(fd_set* in, fd_set* out, int* max_fd){
+	if(!default_layout){
+		default_layout = layout_find(default_layout_name);
+		if(!default_layout){
+			fprintf(stderr, "Failed to find default layout %s\n", default_layout_name);
+			return 1;
+		}
+	}
 	return 0;
 }
 
@@ -77,9 +138,9 @@ int x11_config(char* option, char* value){
 		return 0;
 	}
 	else if(!strcmp(option, "deflayout")){
-		default_layout = layout_find(value);
-		if(!default_layout){
-			fprintf(stderr, "Failed to find default layout %s\n", value);
+		default_layout_name = strdup(value);
+		if(!default_layout_name){
+			fprintf(stderr, "Failed to allocate memory\n");
 			return 1;
 		}
 		return 0;
@@ -90,11 +151,19 @@ int x11_config(char* option, char* value){
 }
 
 int x11_ok(){
-	//TODO check x11 status
+	if(!display_handle){
+		fprintf(stderr, "No connection to an X11 display\n");
+		return 1;
+	}
+
+	if(!rp_command || !rp_command_request){
+		fprintf(stderr, "Failed to query ratpoison-specific Atoms\n");
+		return 1;
+	}
 	return 0;
 }
 
 void x11_cleanup(){
+	free(default_layout_name);
 	XCloseDisplay(display_handle);
-	//TODO clean up x11 resources
 }
