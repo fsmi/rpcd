@@ -1,6 +1,8 @@
 #include <sys/select.h>
 #include "layout.h"
 
+#define DATA_CHUNK 1024
+
 int x11_activate_layout(layout_t* layout);
 int x11_fullscreen();
 int x11_rollback();
