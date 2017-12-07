@@ -16,6 +16,8 @@ typedef struct /*_rpcd_command_t*/ {
 	argument_t* args;
 } command_t;
 
+int command_run(command_t* command, char* posted_json, size_t data_length);
+
 size_t command_count();
 command_t* command_get(size_t index);
 command_t* command_find(char* name);

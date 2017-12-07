@@ -345,12 +345,20 @@ static int api_handle_body(http_client_t* client){
 			api_send_header(client, "500 Failed to activate", false);
 		}
 		else{
-			api_send_header(client, "200 OK", true);
+			api_send_header(client, "200 OK", false);
 		}
 	}
 	else if(!strncmp(client->endpoint, "/command/", 9)){
-		api_send_header(client, "200 OK", true);
-		//TODO run command
+		command_t* command = command_find(client->endpoint + 9);
+		if(!command){
+			api_send_header(client, "400 No such command", false);
+		}
+		else if(command_run(command, client->recv_buf, client->payload_size)){
+			api_send_header(client, "500 Failed to start", false);
+		}
+		else{
+			api_send_header(client, "200 OK", false);
+		}
 	}
 	else{
 		rv = api_send_header(client, "400 Unknown Endpoint", false)
@@ -374,7 +382,7 @@ static int api_data(http_client_t* client){
 		bytes_left += RECV_CHUNK;
 	}
 
-	bytes_recv = recv(client->fd, client->recv_buf + client->recv_offset, bytes_left, 0);
+	bytes_recv = recv(client->fd, client->recv_buf + client->recv_offset, bytes_left - 1, 0);
 	if(bytes_recv < 0){
 		fprintf(stderr, "Failed to receive from HTTP client: %s\n", strerror(errno));
 		return 1;
@@ -409,6 +417,8 @@ static int api_data(http_client_t* client){
 	//handle http body
 	if(client->state == http_data){
 		if((client->payload_size && client->recv_offset + bytes_recv == client->payload_size) || !client->payload_size){
+			//terminate data
+			client->recv_buf[client->payload_size] = 0;
 			//handle the request
 			return api_handle_body(client);
 		}

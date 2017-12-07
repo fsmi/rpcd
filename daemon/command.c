@@ -18,6 +18,21 @@ command_t* command_get(size_t index){
 	return NULL;
 }
 
+command_t* command_find(char* name){
+	size_t u;
+	for(u = 0; u < ncommands; u++){
+		if(!strcmp(name, commands[u].name)){
+			return commands + u;
+		}
+	}
+	return NULL;
+}
+
+int command_run(command_t* command, char* data, size_t data_len){
+	fprintf(stderr, "Running %s with %zu bytes of options %s\n", command->name, data_len, data);
+	return 0;
+}
+
 static void command_init(command_t* command){
 	command_t empty = {
 		0
