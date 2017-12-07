@@ -61,7 +61,7 @@ int x11_activate_layout(layout_t* layout){
 				layout->frames[frame].bbox[0], layout->frames[frame].bbox[1],
 				layout->frames[frame].bbox[2], layout->frames[frame].bbox[3],
 				layout->frames[frame].screen[0], layout->frames[frame].screen[1],
-				layout->frames[frame].screen[3]);
+				layout->frames[frame].screen[2]);
 
 		if(required < 0){
 			fprintf(stderr, "Failed to design layout string\n");
