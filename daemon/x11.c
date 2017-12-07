@@ -5,6 +5,10 @@
 
 #include "x11.h"
 
+int x11_activate_layout(layout_t* layout){
+	return 0;
+}
+
 int x11_loop(fd_set* in, fd_set* out, int* max_fd){
 	return 0;
 }

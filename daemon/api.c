@@ -10,7 +10,7 @@
 #include <netdb.h>
 #include <errno.h>
 
-#include "layout.h"
+#include "x11.h"
 #include "command.h"
 #include "api.h"
 
@@ -273,19 +273,33 @@ static int api_send_layouts(http_client_t* client){
 
 		//dump a single layout
 		//FIXME this is kinda ugly and disregards quoting
-		snprintf(send_buf, sizeof(send_buf), "%s{\"name\":\"%s\",\"xres\":%zu,\"yres\":%zu,\"frames\":[",
-				u ? "," : "", layout->name,
-				layout->width, layout->height);
+		snprintf(send_buf, sizeof(send_buf), "%s{\"name\":\"%s\",\"frames\":[",
+				u ? "," : "", layout->name);
 		network_send(client->fd, send_buf);
 
 		for(p = 0; p < layout->nframes; p++){
-			snprintf(send_buf, sizeof(send_buf), "%s{\"id\":%zu,\"x\":%zu,\"y\":%zu,\"w\":%zu,\"h\":%zu}",
+			snprintf(send_buf, sizeof(send_buf), "%s{\"id\":%zu,\"x\":%zu,\"y\":%zu,\"w\":%zu,\"h\":%zu,\"screen\":%zu}",
 					p ? "," : "", layout->frames[p].id,
 					layout->frames[p].bbox[0], layout->frames[p].bbox[1],
-					layout->frames[p].bbox[2], layout->frames[p].bbox[3]);
+					layout->frames[p].bbox[2], layout->frames[p].bbox[3],
+					layout->frames[p].screen[2]);
 			network_send(client->fd, send_buf);
 		}
 
+		network_send(client->fd, "],\"screens\":[");
+
+		for(u = 0; u <= layout->max_screen; u++){
+			for(p = 0; p < layout->nframes; p++){
+				if(layout->frames[p].screen[2] == u){
+					snprintf(send_buf, sizeof(send_buf), "%s{\"id\":%zu,\"width\":%zu,\"height\":%zu}",
+							u ? "," : "", layout->frames[p].screen[2],
+							layout->frames[p].screen[0], layout->frames[p].screen[1]);
+					network_send(client->fd, send_buf);
+					break;
+				}
+			}
+		}
+		
 		network_send(client->fd, "]}");
 	}
 	network_send(client->fd, "]");
@@ -311,17 +325,25 @@ static int api_handle_body(http_client_t* client){
 		api_send_header(client, "200 OK", true);
 		//TODO total reset
 	}
-	else if(!strcmp(client->endpoint, "/stop")){
-		api_send_header(client, "200 OK", true);
-		//TODO stop all commands
-	}
 	else if(!strcmp(client->endpoint, "/status")){
 		rv = api_send_header(client, "200 OK", true)
 			|| api_send_status(client);
 	}
-	else if(!strncmp(client->endpoint, "/layout/", 8)){
+	else if(!strncmp(client->endpoint, "/stop/", 6)){
 		api_send_header(client, "200 OK", true);
-		//TODO activate layout
+		//TODO stop a running command
+	}
+	else if(!strncmp(client->endpoint, "/layout/", 8)){
+		layout_t* layout = layout_find(client->endpoint + 8);
+		if(!layout){
+			api_send_header(client, "400 No such layout", false);
+		}
+		else if(x11_activate_layout(layout)){
+			api_send_header(client, "500 Failed to activate", false);
+		}
+		else{
+			api_send_header(client, "200 OK", true);
+		}
 	}
 	else if(!strncmp(client->endpoint, "/command/", 9)){
 		api_send_header(client, "200 OK", true);

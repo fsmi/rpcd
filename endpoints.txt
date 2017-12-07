@@ -21,10 +21,12 @@ GET /layouts
 		[
 			{
 				name:"Fullscreen",
-				xres:800,
-				yres:600,
 				frames:[
-					{id:1, x:0, y:0, w:300, h:400},
+					{id:1, x:0, y:0, w:300, h:400, screen:4},
+					...
+				],
+				screens:[
+					{id:5, w:1920, h:1080},
 					...
 				]
 			},

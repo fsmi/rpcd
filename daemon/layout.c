@@ -25,9 +25,20 @@ layout_t* layout_get(size_t index){
 	return NULL;
 }
 
+layout_t* layout_find(char* name){
+	size_t u;
+
+	for(u = 0; u < nlayouts; u++){
+		if(!strcmp(layouts[u].name, name)){
+			return layouts + u;
+		}
+	}
+	return NULL;
+}
+
 static int layout_parse(char* layout_file, layout_t* layout){
 	struct stat source_info;
-	size_t u, p, max_screen = 0;
+	size_t u, p;
 	int source, rv = 0;
 	char* layout_data = NULL, *source_map = NULL, *frame_info = NULL, *frame_tokenize = NULL, *token = NULL, *parameter_tokenize = NULL;
 
@@ -98,8 +109,8 @@ static int layout_parse(char* layout_file, layout_t* layout){
 				token = strchr(token, ')');
 				new_frame.screen[2] = strtoul(token + 1, NULL, 10);
 
-				if(new_frame.screen[2] > max_screen){
-					max_screen = new_frame.screen[2];
+				if(new_frame.screen[2] > layout->max_screen){
+					layout->max_screen = new_frame.screen[2];
 				}
 			}
 		}
@@ -114,19 +125,6 @@ static int layout_parse(char* layout_file, layout_t* layout){
 
 		layout->frames[layout->nframes] = new_frame;
 		layout->nframes++;
-	}
-
-	//recalculate screen extents
-	for(p = 0; p < max_screen; p++){
-		for(u = 0; u < layout->nframes; u++){
-			if(layout->frames[u].screen[2] == p){
-				layout->width += layout->frames[u].screen[0];
-				if(layout->height < layout->frames[u].screen[1]){
-					layout->height = layout->frames[u].screen[1];
-				}
-				break;
-			}
-		}
 	}
 
 bail:
@@ -144,8 +142,7 @@ static int layout_init(layout_t* layout, char* name){
 
 	layout_t empty = {
 		.name = name ? strdup(name) : NULL,
-		.width = 0,
-		.height = 0,
+		.max_screen = 0,
 		.nframes = 0,
 		.frames = NULL
 	};
@@ -196,11 +193,6 @@ int layout_ok(){
 	layout_t* layout = layouts + (nlayouts - 1);
 	if(!layout->name || !layout->frames){
 		fprintf(stderr, "Layout defines no frames or has no name\n");
-		return 1;
-	}
-
-	if(layout->width == 0 || layout->height == 0){
-		fprintf(stderr, "Invalid layout dimensions\n");
 		return 1;
 	}
 
