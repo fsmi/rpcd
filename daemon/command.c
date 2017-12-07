@@ -14,6 +14,11 @@ int command_active(command_t* command){
 	return 0;
 }
 
+int command_stop(command_t* command){
+	//TODO
+	return 0;
+}
+
 static int command_execute(command_instance_t inst){
 	//TODO
 	return 0;
