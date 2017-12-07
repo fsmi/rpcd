@@ -22,13 +22,13 @@ class Controller {
 							}
 							break;
 						case 0:
-							reject('Cannot connect to server.');
+							reject('Failed to access API');
 						default:
 							reject(`${request.status}: ${request.statusText}`);
 					}
 				}
 			};
-			console.log('request:', url, method, JSON.stringify(payload));
+			console.log('Request:', url, method, JSON.stringify(payload));
 			request.open(method, url);
 			request.send(JSON.stringify(payload));
 		});
@@ -41,20 +41,20 @@ class Controller {
 	reset() {
 		this.ajax(`${window.config.api}/reset`, 'GET').then(
 			() => {
-				this.status('reset: success');
+				this.status('Reset successful');
 			},
 			(err) => {
-				this.status(`reset: error: ${err}`);
+				this.status(`Reset encountered an error: ${err}`);
 			});
 	}
 
 	stop() {
 		this.ajax(`${window.config.api}/stop`, 'GET').then(
 			() => {
-				this.status('stop: success');
+				this.status('Command stopped');
 			},
 			(err) => {
-				this.status(`stop: error: ${err}`);
+				this.status(`Failed to stop command: ${err}`);
 			});
 	}
 
@@ -108,15 +108,15 @@ class Controller {
 
 	applyLayout() {
 		let layout = document.querySelector('input[name="layouts"]:checked').value;
-		this.status(`Apply layout: ${this.layouts[layout].name}`);
+		this.status(`Applied layout ${this.layouts[layout].name}`);
 
 		this.ajax(`${window.config.api}/layout/${this.layouts[layout].name}`, 'GET').then(
 			() => {
-				this.status('applyLayout: success');
+				this.status('Layout loaded successfully');
 				this.state.layout = layout;
 			},
 			(err) => {
-				this.status(`applyLayout: error ${err}`);
+				this.status(`Failed to apply layout: ${err}`);
 			}
 		);
 	}
@@ -137,7 +137,7 @@ class Controller {
 					break;
 				case 'enum':
 					if (val.options.indexOf(elem.value) < 0) {
-						this.status(`error enum value not found for ${val.name}.`);
+						this.status(`Value not in enum range for argument ${val.name}.`);
 						return false;
 					} else {
 						arg.value = elem.value;
@@ -160,7 +160,7 @@ class Controller {
 
 		this.ajax(`${window.config.api}/command/${command.name}`, 'POST', options).then(
 		(ans) => {
-			this.status('success');
+			this.status('Command started');
 		},
 		(err) => {
 			this.status(err);
@@ -322,8 +322,8 @@ class Controller {
 				}
 			},
 			(err) => {
-				this.status(`cannot get status: ${err}`);
-				console.log(`cannot get status: ${err}`);
+				this.status(`Failed to query status: ${err}`);
+				console.log(`Failed to query status: ${err}`);
 		});
 	}
 
