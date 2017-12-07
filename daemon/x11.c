@@ -8,8 +8,10 @@
 #include "x11.h"
 
 static layout_t* default_layout = NULL;
-Display* display_handle = NULL;
-Atom rp_command, rp_command_request, rp_command_result;
+static layout_t* current_layout = NULL;
+static char* default_layout_name = NULL;
+static Display* display_handle = NULL;
+static Atom rp_command, rp_command_request, rp_command_result;
 
 static int x11_run_command(char* command){
 	int rv = 0;
@@ -88,7 +90,7 @@ int x11_activate_layout(layout_t* layout){
 
 	fprintf(stderr, "Generated layout: %s\n", layout_string);
 	rv = x11_run_command(layout_string);
-
+	current_layout = layout;
 bail:
 	free(layout_string);
 	return rv;
@@ -108,7 +110,18 @@ int x11_select_frame(size_t frame_id){
 	return x11_run_command(command_buffer);
 }
 
+layout_t* x11_current_layout(){
+	return current_layout ? current_layout : default_layout;
+}
+
 int x11_loop(fd_set* in, fd_set* out, int* max_fd){
+	if(!default_layout){
+		default_layout = layout_find(default_layout_name);
+		if(!default_layout){
+			fprintf(stderr, "Failed to find default layout %s\n", default_layout_name);
+			return 1;
+		}
+	}
 	return 0;
 }
 
@@ -125,9 +138,9 @@ int x11_config(char* option, char* value){
 		return 0;
 	}
 	else if(!strcmp(option, "deflayout")){
-		default_layout = layout_find(value);
-		if(!default_layout){
-			fprintf(stderr, "Failed to find default layout %s\n", value);
+		default_layout_name = strdup(value);
+		if(!default_layout_name){
+			fprintf(stderr, "Failed to allocate memory\n");
 			return 1;
 		}
 		return 0;
@@ -151,5 +164,6 @@ int x11_ok(){
 }
 
 void x11_cleanup(){
+	free(default_layout_name);
 	XCloseDisplay(display_handle);
 }

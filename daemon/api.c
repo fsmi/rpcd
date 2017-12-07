@@ -309,8 +309,8 @@ static int api_send_layouts(http_client_t* client){
 
 static int api_send_status(http_client_t* client){
 	char send_buf[RECV_CHUNK];
-	snprintf(send_buf, sizeof(send_buf), "{\"layouts\":%zu, \"commands\":%zu}",
-			layout_count(), command_count());
+	snprintf(send_buf, sizeof(send_buf),"{\"layouts\":%zu,\"commands\":%zu,\"layout\":\"%s\"}",
+			layout_count(), command_count(), x11_current_layout()->name);
 	return network_send(client->fd, send_buf);
 }
 
