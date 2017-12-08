@@ -131,26 +131,23 @@ class Controller {
 		let command = this.commands[i];
 		this.status(`Start command: ${i}`);
 
-		let args = [];
+		let args = {};
 
 		let ret = command.args.every((val, i) => {
 			let elem = document.querySelector(`#arg_${i}`);
-			let arg = {};
-			arg.name = val.name;
 			switch(val.type) {
 				case 'string':
-					arg.value = elem.value;
+					args[val.name] = elem.value;
 					break;
 				case 'enum':
 					if (val.options.indexOf(elem.value) < 0) {
 						this.status(`Value not in enum range for argument ${val.name}.`);
 						return false;
 					} else {
-						arg.value = elem.value;
+						args[val.name] = elem.value;
 					}
 					break;
 			}
-			args.push(arg);
 			return true;
 		});
 

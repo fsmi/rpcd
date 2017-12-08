@@ -59,8 +59,8 @@ POST /command/name
 	Request format
 		{
 			fullscreen:1,
-			arguments:[
-				{name:"arg1", value:"foo"},
+			arguments:{
+				"arg1":"value1",
 				...
-			]
+			}
 		}
