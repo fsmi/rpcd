@@ -73,13 +73,20 @@ int command_reap(){
 }
 
 static void command_child(command_t* command, command_instance_t* args){
-	char* token = NULL, *child = NULL, **argv = NULL, *variable = NULL, *replacement = NULL;
-	size_t nargs = 1, u;
+	char* token = NULL, *child = NULL, **argv = NULL, *replacement = NULL;
+	size_t nargs = 1, u, p;
 
 	argv = calloc(2, sizeof(char*));
 	if(!argv){
 		fprintf(stderr, "Failed to allocate memory\n");
 		exit(EXIT_FAILURE);
+	}
+
+	//ensure that no argument is NULL
+	for(u = 0; u < command->nargs; u++){
+		if(!args->arguments[u]){
+			args->arguments[u] = "";
+		}
 	}
 
 	//prepare command line for execution
@@ -93,37 +100,26 @@ static void command_child(command_t* command, command_instance_t* args){
 
 		argv[nargs + 1] = NULL;
 		argv[nargs] = token;
+
 		//variable replacement
-		while(strchr(argv[nargs], '%')){
-			variable = strchr(argv[nargs], '%');
-			//find matching variable
-			for(u = 0; u < command->nargs; u++){
-				if(!strncmp(variable + 1, command->args[u].name, strlen(command->args[u].name))){
-					break;
+		if(strchr(token, '%')){
+			for(u = 0; argv[nargs][u]; u++){
+				if(argv[nargs][u] == '%'){
+					for(p = 0; p < command->nargs; p++){
+						if(!strncmp(argv[nargs] + u + 1, command->args[p].name, strlen(command->args[p].name))){
+							//wasteful allocs
+							replacement = calloc(strlen(argv[nargs]) + strlen(args->arguments[p]), sizeof(char));
+							memcpy(replacement, argv[nargs], u);
+							memcpy(replacement + u, args->arguments[p], strlen(args->arguments[p]));
+							memcpy(replacement + u + strlen(args->arguments[p]), argv[nargs] + u + strlen(command->args[p].name) + 1, strlen(argv[nargs] + u + strlen(command->args[p].name)));
+
+							argv[nargs] = replacement;
+							u += strlen(args->arguments[p]);
+						}
+					}
 				}
 			}
-			if(u == command->nargs){
-				break;
-			}
-
-			if(!args->arguments[u]){
-				args->arguments[u] = "";
-			}
-
-			//alloc space (wasteful, but we're close to exec'ing anyway)
-			replacement = calloc(strlen(argv[nargs]) - strlen(command->args[u].name) - 1 + strlen(args->arguments[u]), sizeof(char));
-			if(!replacement){
-				fprintf(stderr, "Failed to allocate memory\n");
-				return;
-			}
-
-			//copy FIXME this is really hacky
-			memcpy(replacement, argv[nargs], variable - argv[nargs]);
-			memcpy(replacement + (variable - argv[nargs]), args->arguments[u], strlen(args->arguments[u]));
-			memcpy(replacement + (variable - argv[nargs]) + strlen(args->arguments[u]), variable + 1 + strlen(command->args[u].name), strlen(variable + 1 + strlen(command->args[u].name)));
-			argv[nargs] = replacement;
 		}
-
 		nargs++;
 	}
 
@@ -266,11 +262,7 @@ int command_run(command_t* command, char* data, size_t data_len){
 		}
 	}
 
-	for(u = 0; u < command->nargs; u++){
-		free(instance.arguments[u]);
-	}
 	free(instance.arguments);
-
 	ejson_cleanup(ejson);
 	return rv;
 }

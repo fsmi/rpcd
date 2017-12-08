@@ -1,5 +1,2 @@
-Documentation
 Commands are not searched in PATH
 Running commands not yet shown in interface
-Entry fields for non-selected commands are used for submission
-Fix invalid frees
