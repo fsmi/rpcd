@@ -53,6 +53,7 @@ int main(int argc, char** argv){
 	signal(SIGCHLD, signal_handler);
 	FD_ZERO(&primary);
 
+	fprintf(stderr, "%s now waiting for API clients\n", VERSION);
 	while(!shutdown_requested){
 		FD_ZERO(&secondary);
 		max_fd = -1;

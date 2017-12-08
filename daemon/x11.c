@@ -132,9 +132,9 @@ int x11_config(char* option, char* value){
 			fprintf(stderr, "Failed to open display %s\n", value);
 			return 1;
 		}
-		rp_command = XInternAtom(display_handle, "RP_COMMAND", False);
-		rp_command_request = XInternAtom(display_handle, "RP_COMMAND_REQUEST", False);
-		rp_command_result = XInternAtom(display_handle, "RP_COMMAND_RESULT", False);
+		rp_command = XInternAtom(display_handle, "RP_COMMAND", True);
+		rp_command_request = XInternAtom(display_handle, "RP_COMMAND_REQUEST", True);
+		rp_command_result = XInternAtom(display_handle, "RP_COMMAND_RESULT", True);
 		return 0;
 	}
 	else if(!strcmp(option, "deflayout")){
