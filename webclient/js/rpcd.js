@@ -48,8 +48,8 @@ class Controller {
 			});
 	}
 
-	stop() {
-		this.ajax(`${window.config.api}/stop`, 'GET').then(
+	stopCommand(i) {
+		this.ajax(`${window.config.api}/stop/${this.commands[i].name}`, 'GET').then(
 			() => {
 				this.status('Command stopped');
 			},
@@ -78,7 +78,13 @@ class Controller {
 			let button;
 
 			if (prefix === 'command') {
-				button = this.createButton(`${prefix}_${i}_button`,
+				button = this.createButton(`${prefix}_${i}_stop`,
+					'stop', () => {
+						this.stopCommand(i);
+					});
+				button.classList.add('hidden');
+				li.appendChild(button);
+				button = this.createButton(`${prefix}_${i}_start`,
 					'start', () => {
 						this.startCommand(i);
 					});
@@ -241,29 +247,26 @@ class Controller {
 			let label = document.createElement('label');
 			label.setAttribute('for', `arg_${i}`);
 			label.textContent = `${option.name}:`;
-			let input = document.createElement('input');
-			input.id = `arg_${i}`;
-			input['data-option'] = option;
+			let input;
 			switch(option.type) {
-				case 'string':
-					input.type = 'text';
-					input.placeholder = option.hint;
-					break;
 				case 'enum':
-					input.type = 'text';
-					input.setAttribute('list', `arglist_${i}`);
-					input.pattern = option.options.join('|');
-					input.placeholder = ' ';
-
-					let datalist = document.createElement('datalist');
-					datalist.id = `arglist_${i}`;
+					input = document.createElement('select');
 					option.options.forEach((item) => {
 						let o = document.createElement('option');
 						o.value = item;
-						datalist.appendChild(o);
+						o.textContent = item;
+						input.appendChild(o);
 					});
-					li.appendChild(datalist);
+					break;
+				case 'string':
+				default:
+					input = document.createElement('input');
+					input.type = 'text';
+					input.placeholder = option.hint;
+					break;
 			}
+			input.id = `arg_${i}`;
+			input['data-option'] = option;
 			li.appendChild(label);
 			li.appendChild(input);
 
@@ -313,11 +316,21 @@ class Controller {
 		this.ajax(`${window.config.api}/status`, 'GET')
 			.then((state) => {
 				console.log(state);
-				//state.running = [0, 2];
 				if (state.running && state.running.length > 0) {
-					state.running.forEach((cmd) => {
-						console.log(cmd);
-						this.addCmdStopButton(cmd);
+					this.commands.forEach((elem) => {
+						let id = state.running.findIndex((val) => {
+							return val === elem.name;
+						});
+
+						let elemStart = document.querySelector(`#command_${id}_start`);
+						let elemStop = document.querySelector(`#command_${id}_stop`);
+						if (id) {
+							elemStart.classList.add('hidden');
+							elemStop.classList.remove('hidden');
+						} else {
+							elemStop.classList.remove('hidden');
+							elemStart.classList.add('hidden');
+						}
 					});
 				}
 			},

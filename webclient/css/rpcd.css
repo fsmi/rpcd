@@ -53,6 +53,15 @@ h3 {
 	padding-left: 1em;
 }
 
+#cmdHeadline {
+	float: left;
+}
+
+.form_elem {
+	display: inline-block;
+	float: right;
+}
+
 .grid_items {
 	width: 100%;
 	padding: 0;
@@ -232,7 +241,7 @@ input[type="checkbox"]:checked:after {
 	border-color: #2196F3;
 }
 
-input[type="text"] {
+input[type="text"], ul li select {
 	padding: 5px 1em;
 	border-radius: 3px;
 	background-color: white;
@@ -268,12 +277,11 @@ input[type='text']:valid:not(:placeholder-shown) {
 ul {
 	padding: 0;
 	margin: 0;
+	clear: both;
 }
 
 select {
 	padding: 5px;
-	height: 3rem;
-	width: 100%;
 	font-size: 13px;
 	line-height: 1.846;
 	color: #666;
