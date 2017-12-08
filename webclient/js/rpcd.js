@@ -271,44 +271,6 @@ class Controller {
 		});
 	}
 
-	createDummyLayouts() {
-		for (let i = 0; i < 10; i++) {
-			this.layouts.push(
-				{
-					name: `Layout ${i}`,
-					screens: [
-						{id: 0, width: 1600, height: 1200},
-						{id: 1, width: 1600, height: 1200}
-					],
-					frames: [
-						{id: i+10, ul_x: 0, ul_y:0, w:300, h: 400, screen: 0},
-						{id: i+20, ul_x: 300, ul_y: 0, w: 300, h: 400, screen: 0},
-						{id: i+30, ul_x: 600, ul_y: 0, w: 1000, h: 400, screen: 0},
-						{id: i+40, ul_x: 0, ul_y: 200, w: 1200, h: 800, screen: 0},
-						{id: i+10, ul_x: 0, ul_y:0, w:300, h: 400, screen: 1},
-						{id: i+20, ul_x: 300, ul_y: 0, w: 300, h: 400, screen: 1},
-						{id: i+30, ul_x: 600, ul_y: 0, w: 1000, h: 400, screen: 1},
-						{id: i+40, ul_x: 0, ul_y: 200, w: 1200, h: 800, screen: 1}
-
-					]
-				}
-			);
-		}
-	}
-
-	createDummyCommands() {
-		for (let i = 0; i < 10; i++) {
-			this.commands.push(
-				{
-					name: `Command ${i}`,
-					args: [
-						{name: 'arg1', type:'string', hint:'url'},
-						{name: 'arg2', type:'enum', options:['val1', 'val2']}
-					]
-				}
-			);
-		}
-	}
 	getStatus() {
 		this.ajax(`${window.config.api}/status`, 'GET')
 			.then((state) => {
@@ -355,7 +317,6 @@ class Controller {
 		},
 		(err) => {
 			this.status(err);
-			this.createDummyLayouts();
 			this.fillList(this.layouts,
 				document.querySelector('#layout_items'),
 				'layout',
@@ -371,7 +332,6 @@ class Controller {
 		},
 		(err) => {
 			this.status(err);
-			this.createDummyCommands();
 			this.fillList(this.commands,
 				document.querySelector('#command_items'),
 				'command',
