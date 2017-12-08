@@ -1,26 +1,154 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <errno.h>
+#include <signal.h>
 
 #include "x11.h"
 #include "command.h"
 #include "easy_json.h"
 
-size_t ncommands = 0;
-command_t* commands = NULL;
+static size_t ncommands = 0;
+static command_t* commands = NULL;
+extern char** environ;
 
 int command_active(command_t* command){
-	//TODO check for active commands
-	return 0;
+	return command->state == running;
 }
 
 int command_stop(command_t* command){
-	//TODO
+	switch(command->state){
+		case running:
+			//send SIGTERM to process group
+			if(kill(-command->instance, SIGTERM)){
+				fprintf(stderr, "Failed to terminate command %s: %s\n", command->name, strerror(errno));
+			}
+			command->state = terminated;
+			break;
+		case terminated:
+			//if that didnt help, send SIGKILL
+			if(kill(-command->instance, SIGKILL)){
+				fprintf(stderr, "Failed to terminate command %s: %s\n", command->name, strerror(errno));
+			}
+			break;
+		case stopped:
+			fprintf(stderr, "Command %s not running, not stopping\n", command->name);
+			break;
+	}
 	return 0;
 }
 
-static int command_execute(command_instance_t inst){
-	//TODO
+int command_reap(){
+	int wait_status;
+	pid_t status;
+	size_t u;
+	do{
+		status = waitpid(-1, &wait_status, WNOHANG);
+		if(status < 0){
+			if(errno == ECHILD){
+				break;
+			}
+			fprintf(stderr, "Failed to reap children: %s\n", strerror(errno));
+			return 1;
+		}
+		else if(status != 0){
+			for(u = 0; u < ncommands; u++){
+				if(commands[u].state != stopped && commands[u].instance == status){
+					commands[u].state = stopped;
+					//if restore requested, undo layout change
+					if(commands[u].restore_layout){
+						x11_rollback();
+						commands[u].restore_layout = 0;
+					}
+					fprintf(stderr, "Instance of %s stopped\n", commands[u].name);
+				}
+			}
+		}
+	} 
+	while(status);
+	return 0;
+}
+
+static void command_child(command_t* command, command_instance_t* args){
+	char* token = NULL, *child = NULL, **argv = NULL, *variable = NULL, *replacement = NULL;
+	size_t nargs = 1, u;
+
+	argv = calloc(2, sizeof(char*));
+	if(!argv){
+		fprintf(stderr, "Failed to allocate memory\n");
+		exit(EXIT_FAILURE);
+	}
+
+	//prepare command line for execution
+	child = argv[0] = strtok(command->command, " ");
+	for(token = strtok(NULL, " "); token; token = strtok(NULL, " ")){
+		argv = realloc(argv, (nargs + 2) * sizeof(char*));
+		if(!argv){
+			fprintf(stderr, "Failed to allocate memory\n");
+			exit(EXIT_FAILURE);
+		}
+
+		argv[nargs + 1] = NULL;
+		argv[nargs] = token;
+		//variable replacement
+		while(strchr(argv[nargs], '%')){
+			variable = strchr(argv[nargs], '%');
+			//find matching variable
+			for(u = 0; u < command->nargs; u++){
+				if(!strncmp(variable + 1, command->args[u].name, strlen(command->args[u].name))){
+					break;
+				}
+			}
+			if(u == command->nargs){
+				break;
+			}
+
+			if(!args->arguments[u]){
+				args->arguments[u] = "";
+			}
+
+			//alloc space (wasteful, but we're close to exec'ing anyway)
+			replacement = calloc(strlen(argv[nargs]) - strlen(command->args[u].name) - 1 + strlen(args->arguments[u]), sizeof(char));
+			if(!replacement){
+				fprintf(stderr, "Failed to allocate memory\n");
+				return;
+			}
+
+			//copy FIXME this is really hacky
+			memcpy(replacement, argv[nargs], variable - argv[nargs]);
+			memcpy(replacement + (variable - argv[nargs]), args->arguments[u], strlen(args->arguments[u]));
+			memcpy(replacement + (variable - argv[nargs]) + strlen(args->arguments[u]), variable + 1 + strlen(command->args[u].name), strlen(variable + 1 + strlen(command->args[u].name)));
+			argv[nargs] = replacement;
+		}
+
+		nargs++;
+	}
+
+	//make the child a session leader to be able to kill the entire group
+	setpgrp();
+	//exec into command
+	if(execve(child, argv, environ)){
+		fprintf(stderr, "Failed to execute child process (%s): %s\n", child, strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+}
+
+static int command_execute(command_t* command, command_instance_t* args){
+	command->instance = fork();
+	switch(command->instance){
+		case 0:
+			command_child(command, args);
+			exit(EXIT_FAILURE);
+		case -1:
+			fprintf(stderr, "Failed to spawn off new process for command %s: %s\n", command->name, strerror(errno));
+			return 1;
+		default:
+			command->state = running;
+			command->restore_layout = args->restore_layout;
+	}
 	return 0;
 }
 
@@ -65,29 +193,23 @@ static int command_parse_json(command_t* command, command_instance_t* instance, 
 
 	if(frame_info){
 		int frame_id = -1;
-		if (ejson_get_int(frame_info, &frame_id) != EJSON_OK){
+		if(ejson_get_int(frame_info, &frame_id) != EJSON_OK){
 			fprintf(stderr, "Failed to parse frame parameter\n");
 		}
 		else{
 			x11_select_frame(frame_id);
 		}
 	}
-	else{
-		fprintf(stderr, "No frame info supplied\n");
-	}
 
 	if(fullscreen_info){
 		int fullscreen = 0;
-		if (ejson_get_int(fullscreen_info, &fullscreen) != EJSON_OK) {
+		if(ejson_get_int(fullscreen_info, &fullscreen) != EJSON_OK) {
 			fprintf(stderr, "Failed to parse fullscreen parameter\n");
 		}
 		else if(fullscreen){
 			x11_fullscreen();
 			instance->restore_layout = 1;
 		}
-	}
-	else{
-		fprintf(stderr, "No fullscreen info supplied\n");
 	}
 
 	if(command->nargs){
@@ -118,8 +240,8 @@ static int command_parse_json(command_t* command, command_instance_t* instance, 
 int command_run(command_t* command, char* data, size_t data_len){
 	int rv = 1;
 	ejson_struct* ejson = NULL;
+	size_t u;
 	command_instance_t instance = {
-		.command = command,
 		.arguments = calloc(command->nargs, sizeof(char*))
 	};
 
@@ -134,11 +256,20 @@ int command_run(command_t* command, char* data, size_t data_len){
 	}
 
 	enum ejson_errors error = ejson_parse_warnings(&ejson, data, data_len, true, stderr);
-	if (error == EJSON_OK) {
-		if (!command_parse_json(command, &instance, ejson)) {
-			rv = command_execute(instance);
+	if(error == EJSON_OK){
+		if(!command_parse_json(command, &instance, ejson)){
+			//debug variable set
+			for(u = 0; u < command->nargs; u++){
+				fprintf(stderr, "%s.%s -> %s\n", command->name, command->args[u].name, instance.arguments[u] ? instance.arguments[u] : "-null-");
+			}
+			rv = command_execute(command, &instance);
 		}
 	}
+
+	for(u = 0; u < command->nargs; u++){
+		free(instance.arguments[u]);
+	}
+	free(instance.arguments);
 
 	ejson_cleanup(ejson);
 	return rv;
@@ -315,7 +446,19 @@ int command_ok(){
 }
 
 void command_cleanup(){
-	size_t u;
+	size_t u, done = 0;
+
+	//stop all executing instances
+	while(!done){
+		done = 1;
+		for(u = 0; u < ncommands; u++){
+			if(commands[u].state != stopped){
+				command_stop(commands + u);
+				done = 0;
+			}
+		}
+		command_reap();
+	}
 
 	for(u = 0; u < ncommands; u++){
 		command_free(commands + u);

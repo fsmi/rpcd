@@ -13,9 +13,17 @@
 #include "api.h"
 
 volatile sig_atomic_t shutdown_requested = 0;
+volatile sig_atomic_t pid_signaled = 0;
 
 static void signal_handler(int signum){
-	shutdown_requested = 1;
+	switch(signum){
+		case SIGINT:
+			shutdown_requested = 1;
+			break;
+		case SIGCHLD:
+			pid_signaled = 1;
+			break;
+	}
 }
 
 static int usage(char* fn){
@@ -42,6 +50,7 @@ int main(int argc, char** argv){
 	}
 
 	signal(SIGINT, signal_handler);
+	signal(SIGCHLD, signal_handler);
 	FD_ZERO(&primary);
 
 	while(!shutdown_requested){
@@ -60,8 +69,23 @@ int main(int argc, char** argv){
 		//select on secondary
 		error = select(max_fd + 1, &secondary, NULL, NULL, NULL);
 		if(error < 0){
-			fprintf(stderr, "select() returned: %s\n", strerror(errno));
-			break;
+			if(errno == EINTR){
+				if(shutdown_requested){
+					fprintf(stderr, "Exiting cleanly\n");
+					break;
+				}
+			}
+			else{
+				fprintf(stderr, "select() failed: %s\n", strerror(errno));
+				goto bail;
+			}
+		}
+
+		if(pid_signaled){
+			if(command_reap()){
+				goto bail;
+			}
+			pid_signaled = 0;
 		}
 
 		//swap descriptor sets

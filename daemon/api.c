@@ -308,10 +308,27 @@ static int api_send_layouts(http_client_t* client){
 }
 
 static int api_send_status(http_client_t* client){
+	int rv = 0, first = 1;
 	char send_buf[RECV_CHUNK];
-	snprintf(send_buf, sizeof(send_buf),"{\"layouts\":%zu,\"commands\":%zu,\"layout\":\"%s\"}",
+	size_t u, commands = command_count();
+	command_t* cmd = NULL;
+
+	snprintf(send_buf, sizeof(send_buf),"{\"layouts\":%zu,\"commands\":%zu,\"layout\":\"%s\",\"running\":[",
 			layout_count(), command_count(), x11_current_layout()->name);
-	return network_send(client->fd, send_buf);
+	rv |= network_send(client->fd, send_buf);
+
+	for(u = 0; u < commands; u++){
+		cmd = command_get(u);
+		if(cmd->state != stopped){
+			snprintf(send_buf, sizeof(send_buf), "%s\"%s\"",
+					first ? "" : ",", cmd->name);
+			network_send(client->fd, send_buf);
+			first = 0;
+		}
+	}
+
+	rv |= network_send(client->fd, "]}");
+	return rv;
 }
 
 static int api_handle_body(http_client_t* client){
@@ -347,7 +364,6 @@ static int api_handle_body(http_client_t* client){
 			api_send_header(client, "200 OK", false);
 			network_send(client->fd, "{}");
 		}
-		api_send_header(client, "200 OK", true);
 	}
 	else if(!strncmp(client->endpoint, "/layout/", 8)){
 		layout_t* layout = layout_find(client->endpoint + 8);
