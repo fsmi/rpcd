@@ -86,6 +86,10 @@ int main(int argc, char** argv){
 				goto bail;
 			}
 			pid_signaled = 0;
+			//FIXME somehow, after this section, the listening fd is set in secondary
+			//this causes the process to block on accept
+			//resetting the active fd set works around this
+			FD_ZERO(&secondary);
 		}
 
 		//swap descriptor sets
