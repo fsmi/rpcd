@@ -164,5 +164,7 @@ int x11_ok(){
 
 void x11_cleanup(){
 	free(default_layout_name);
-	XCloseDisplay(display_handle);
+	if(display_handle){
+		XCloseDisplay(display_handle);
+	}
 }
