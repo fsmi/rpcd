@@ -6,6 +6,7 @@ GET /commands
 		[
 			{
 				name:"Example 1",
+				description:"Optional description",
 				args:[
 					{"name":"arg1", type:"enum", options:["foo", "bar"]},
 					{"name":"stringarg", type:"string", hint:"your hint"},

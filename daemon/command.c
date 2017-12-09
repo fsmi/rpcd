@@ -286,6 +286,7 @@ static void command_free(command_t* command){
 	}
 	free(command->args);
 	free(command->command);
+	free(command->description);
 	free(command->name);
 }
 
@@ -324,6 +325,10 @@ int command_config(char* option, char* value){
 			fprintf(stderr, "Failed to allocate memory\n");
 			return 1;
 		}
+		return 0;
+	}
+	else if(!strcmp(option, "description")){
+		commands[ncommands - 1].description = strdup(value);
 		return 0;
 	}
 

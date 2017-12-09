@@ -76,4 +76,4 @@ executing `undo` at termination, rolling back the last layout change.
 ## Caveats
 
 * Special characters and spaces in layout/command names currently cause problems. This may be fixed
-the (near) future.
+in the (near) future.

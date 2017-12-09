@@ -17,6 +17,7 @@ typedef struct /*_command_arg_t*/ {
 
 typedef struct /*_rpcd_command_t*/ {
 	char* name;
+	char* description;
 	char* command;
 	size_t nargs;
 	argument_t* args;
