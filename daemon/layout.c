@@ -129,8 +129,12 @@ static int layout_parse(char* layout_file, layout_t* layout){
 
 bail:
 	free(layout_data);
-	munmap(source_map, source_info.st_size);
-	close(source);
+	if(source_map){
+		munmap(source_map, source_info.st_size);
+	}
+	if(source >= 0){
+		close(source);
+	}
 	return rv;
 }
 
