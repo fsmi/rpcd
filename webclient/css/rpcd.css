@@ -49,12 +49,15 @@ section {
 	margin: 0 auto;
 }
 
-h3 {
+h3, h4 {
 	padding-left: 1em;
+	float: left;
 }
 
-#cmdHeadline {
-	float: left;
+h4 {
+	clear: both;
+	color: #666;
+	margin: 0;
 }
 
 .form_elem {
