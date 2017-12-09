@@ -56,7 +56,6 @@ int x11_activate_layout(layout_t* layout){
 		return 1;
 	}
 
-	//FIXME this generates an access violation somewhere
 	for(frame = 0; frame < layout->nframes; frame++){
 		required = snprintf(layout_string + off, left, "%s(frame :number %zu :x %zu :y %zu :width %zu :height %zu :screenw %zu :screenh %zu) %zu",
 				frame ? "," : "", layout->frames[frame].id,
