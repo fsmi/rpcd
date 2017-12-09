@@ -7,6 +7,8 @@ enabling them to start/stop a set of previously approved processes.
 This allows non-privileged users to run eg. games or view videos on a big
 screen without having to give them local shell access to start the software.
 
+[![Coverity Scan Build Status](https://scan.coverity.com/projects/14561/badge.svg)](https://scan.coverity.com/projects/14561)
+
 ## Components
 
 This project consists of several modules

@@ -133,6 +133,7 @@ static int api_accept(){
 		clients = realloc(clients, (nclients + 1) * sizeof(http_client_t));
 		if(!clients){
 			fprintf(stderr, "Failed to allocate memory\n");
+			close(fd);
 			return 1;
 		}
 		api_client_init(clients + nclients);

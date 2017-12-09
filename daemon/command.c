@@ -108,7 +108,7 @@ static void command_child(command_t* command, command_instance_t* args){
 					for(p = 0; p < command->nargs; p++){
 						if(!strncmp(argv[nargs] + u + 1, command->args[p].name, strlen(command->args[p].name))){
 							//wasteful allocs
-							replacement = calloc(strlen(argv[nargs]) + strlen(args->arguments[p]), sizeof(char));
+							replacement = calloc(strlen(argv[nargs]) + strlen(args->arguments[p]) + 1, sizeof(char));
 							memcpy(replacement, argv[nargs], u);
 							memcpy(replacement + u, args->arguments[p], strlen(args->arguments[p]));
 							memcpy(replacement + u + strlen(args->arguments[p]), argv[nargs] + u + strlen(command->args[p].name) + 1, strlen(argv[nargs] + u + strlen(command->args[p].name)));

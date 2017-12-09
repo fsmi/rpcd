@@ -42,8 +42,7 @@ int config_parse(char* cfg_file){
 	FILE* source = fopen(cfg_file, "r");
 	if(!source){
 		fprintf(stderr, "Failed to open configuration file %s: %s\n", cfg_file, strerror(errno));
-		rv = 1;
-		goto bail;
+		return 1;
 	}
 
 	//read config file lines
