@@ -248,6 +248,7 @@ int command_run(command_t* command, char* data, size_t data_len){
 
 	if(data_len < 1) {
 		fprintf(stderr, "No execution information provided for command %s\n", command->name);
+		free(instance.arguments);
 		return 1;
 	}
 
