@@ -222,7 +222,7 @@ char* ejson_parse_get_string(ejson_state* state) {
 						u_2 = strtoul(u, NULL, 16);
 						if (u_1 == 0x00 && u_2 <= 0x7F) {
 							state->data[offset] = u_2;
-						} else if (u_1 >= 0 && u_1 <= 0x07 && u_2 >= 0x80) {
+						} else if (u_1 <= 0x07 && u_2 >= 0x80) {
 							state->data[offset] = 0xC0;
 							state->data[offset] |= (u_1 & 0x07) << 2 | (0xC0 & u_2) >> 6;
 							offset++;
