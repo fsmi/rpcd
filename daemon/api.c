@@ -362,7 +362,7 @@ static int api_handle_body(http_client_t* client){
 			api_send_header(client, "500 Failed to stop", false);
 		}
 		else{
-			api_send_header(client, "200 OK", false);
+			api_send_header(client, "200 OK", true);
 			network_send(client->fd, "{}");
 		}
 	}
@@ -375,7 +375,7 @@ static int api_handle_body(http_client_t* client){
 			api_send_header(client, "500 Failed to activate", false);
 		}
 		else{
-			api_send_header(client, "200 OK", false);
+			api_send_header(client, "200 OK", true);
 			network_send(client->fd, "{}");
 		}
 	}
@@ -391,7 +391,7 @@ static int api_handle_body(http_client_t* client){
 			api_send_header(client, "500 Failed to start", false);
 		}
 		else{
-			api_send_header(client, "200 OK", false);
+			api_send_header(client, "200 OK", true);
 			network_send(client->fd, "{}");
 		}
 	}
