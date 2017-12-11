@@ -9,6 +9,7 @@
 #include <sys/select.h>
 #include <netdb.h>
 #include <errno.h>
+#include <fcntl.h>
 
 #include "x11.h"
 #include "command.h"
@@ -48,6 +49,11 @@ static int network_listener(char* host, char* port, int socktype){
 		error = 1;
 		if(setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (void*)&error, sizeof(error))){
 			fprintf(stderr, "Failed to allow socket reuse on port %s: %s\n", port, strerror(errno));
+		}
+
+		error = fcntl(fd, F_GETFD, 0) | FD_CLOEXEC;
+		if(fcntl(fd, F_SETFD, error) < 0){
+			fprintf(stderr, "Failed to set FD_CLOEXEC on listener: %s\n", strerror(errno));
 		}
 
 		if(bind(fd, iter->ai_addr, iter->ai_addrlen)){
@@ -117,6 +123,7 @@ static void api_client_init(http_client_t* client){
 static int api_accept(){
 	size_t u;
 	int fd = accept(listen_fd, NULL, NULL);
+	int flags;
 
 	if(fd < 0){
 		fprintf(stderr, "Invalid fd accepted\n");
@@ -138,6 +145,11 @@ static int api_accept(){
 		}
 		api_client_init(clients + nclients);
 		nclients++;
+	}
+
+	flags = fcntl(fd, F_GETFD, 0) | FD_CLOEXEC;
+	if(fcntl(fd, F_SETFD, flags) < 0){
+		fprintf(stderr, "Failed to set FD_CLOEXEC on client fd: %s\n", strerror(errno));
 	}
 
 	clients[u].fd = fd;
