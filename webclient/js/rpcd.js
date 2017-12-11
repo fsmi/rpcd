@@ -75,6 +75,7 @@ class Controller {
 			let label = document.createElement('label');
 			label.setAttribute('for',`${prefix}_${i}`);
 			label.textContent = item.name;
+			li.appendChild(label);
 			let button;
 
 			if (prefix === 'command') {
@@ -93,7 +94,6 @@ class Controller {
 					'apply', this.applyLayout.bind(this));
 			}
 
-			li.appendChild(label);
 			li.appendChild(button);
 			elem.appendChild(li);
 			if (i === 0) {
