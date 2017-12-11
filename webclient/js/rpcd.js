@@ -42,9 +42,11 @@ class Controller {
 		this.ajax(`${window.config.api}/reset`, 'GET').then(
 			() => {
 				this.status('Reset successful');
+				this.getStatus();
 			},
 			(err) => {
 				this.status(`Reset encountered an error: ${err}`);
+				this.getStatus();
 			});
 	}
 
@@ -52,9 +54,11 @@ class Controller {
 		this.ajax(`${window.config.api}/stop/${this.commands[i].name}`, 'GET').then(
 			() => {
 				this.status('Command stopped');
+				this.getStatus();
 			},
 			(err) => {
 				this.status(`Failed to stop command: ${err}`);
+				this.getStatus();
 			});
 	}
 
@@ -120,9 +124,11 @@ class Controller {
 			() => {
 				this.status('Layout loaded successfully');
 				this.state.layout = layout;
+				this.getStatus();
 			},
 			(err) => {
 				this.status(`Failed to apply layout: ${err}`);
+				this.getStatus();
 			}
 		);
 	}
@@ -164,9 +170,11 @@ class Controller {
 		this.ajax(`${window.config.api}/command/${command.name}`, 'POST', options).then(
 		(ans) => {
 			this.status('Command started');
+			this.getStatus();
 		},
 		(err) => {
 			this.status(err);
+			this.getStatus();
 		});
 	}
 
@@ -276,20 +284,20 @@ class Controller {
 		this.ajax(`${window.config.api}/status`, 'GET')
 			.then((state) => {
 				console.log(state);
-				if (state.running && state.running.length > 0) {
-					this.commands.forEach((elem) => {
+				if (state.running) {
+					this.commands.forEach((elem, index) => {
 						let id = state.running.findIndex((val) => {
 							return val === elem.name;
 						});
 
-						let elemStart = document.querySelector(`#command_${id}_start`);
-						let elemStop = document.querySelector(`#command_${id}_stop`);
-						if (id) {
-							elemStart.classList.add('hidden');
-							elemStop.classList.remove('hidden');
+						let elemStart = document.querySelector(`#command_${index}_start`);
+						let elemStop = document.querySelector(`#command_${index}_stop`);
+						if (id < 0) {
+							elemStop.classList.add('hidden');
+							elemStart.classList.remove('hidden');
 						} else {
-							elemStop.classList.remove('hidden');
 							elemStart.classList.add('hidden');
+							elemStop.classList.remove('hidden');
 						}
 					});
 				}
@@ -341,8 +349,10 @@ class Controller {
 
 		Promise.all(lp, cp).then(() => {
 			this.getStatus();
+			setInterval(this.getStatus.bind(this), 5000);
 		}, () => {
 			this.getStatus();
+			setInterval(this.getStatus.bind(this), 5000);
 		});
 
 		switch (window.location.hash) {
