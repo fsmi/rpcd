@@ -33,7 +33,7 @@ static char* config_trim_line(char* in){
 }
 
 int config_parse(char* cfg_file){
-	int rv = 0;
+	int rv = 1;
 	size_t line_size = 0;
 	ssize_t status;
 	char* line_raw = NULL, *line = NULL, *argument = NULL;
@@ -60,7 +60,6 @@ int config_parse(char* cfg_file){
 			if((config_state == conf_layout && layout_ok())
 					|| (config_state == conf_command && command_ok())){
 				fprintf(stderr, "%s:%zu Cannot switch section before the previous configuration is done\n", cfg_file, line_no);
-				rv = 1;
 				goto bail;
 			}
 
@@ -73,7 +72,6 @@ int config_parse(char* cfg_file){
 			else if(!strncmp(line, "[layout ", 8)){
 				line[strlen(line) - 1] = 0;
 				if(layout_new(line + 8)){
-					rv = 1;
 					goto bail;
 				}
 				config_state = conf_layout;
@@ -81,7 +79,6 @@ int config_parse(char* cfg_file){
 			else if(!strncmp(line, "[command ", 9)){
 				line[strlen(line) - 1] = 0;
 				if(command_new(line + 9)){
-					rv = 1;
 					goto bail;
 				}
 				config_state = conf_command;
@@ -90,11 +87,15 @@ int config_parse(char* cfg_file){
 				fprintf(stderr, "%s:%zu Unknown section keyword\n", cfg_file, line_no);
 			}
 		}
+		else if(!strncmp(line, "include ", 8)){
+			if(config_parse(line + 8)){
+				goto bail;
+			}
+		}
 		else{
 			argument = strchr(line, '=');
 			if(!argument){
 				fprintf(stderr, "%s:%zu Not a assignment\n", cfg_file, line_no);
-				rv = 1;
 				goto bail;
 			}
 
@@ -105,29 +106,24 @@ int config_parse(char* cfg_file){
 			switch(config_state){
 				case conf_none:
 					fprintf(stderr, "%s:%zu No section specified\n", cfg_file, line_no);
-					rv = 1;
 					goto bail;
 				case conf_web:
 					if(api_config(line, argument)){
-						rv = 1;
 						goto bail;
 					}
 					break;
 				case conf_x11:
 					if(x11_config(line, argument)){
-						rv = 1;
 						goto bail;
 					}
 					break;
 				case conf_layout:
 					if(layout_config(line, argument)){
-						rv = 1;
 						goto bail;
 					}
 					break;
 				case conf_command:
 					if(command_config(line, argument)){
-						rv = 1;
 						goto bail;
 					}
 					break;
@@ -136,6 +132,7 @@ int config_parse(char* cfg_file){
 		}
 		line_no++;
 	}
+	rv = 0;
 
 bail:
 	fclose(source);

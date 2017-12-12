@@ -44,6 +44,7 @@ daemon executable is the configuration file to be used.
 
 The daemon configuration file closely mirrors the standard `ini` file format. An example
 configuration may be found in [daemon/rpcd.conf](daemon/rpcd.conf).
+Sub-configuration files can be pulled in while parsing with an `include <file>` line.
 
 To generate a layout dump from an existing ratpoison instance, run `ratpoison -c sfdump`.
 
