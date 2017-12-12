@@ -19,6 +19,7 @@ typedef struct /*_rpcd_command_t*/ {
 	char* name;
 	char* description;
 	char* command;
+	size_t windows;
 	size_t nargs;
 	argument_t* args;
 

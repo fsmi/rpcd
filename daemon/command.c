@@ -272,6 +272,7 @@ static void command_init(command_t* command){
 	command_t empty = {
 		0
 	};
+	empty.windows = 1;
 	*command = empty;
 }
 
@@ -330,6 +331,11 @@ int command_config(char* option, char* value){
 	else if(!strcmp(option, "description")){
 		commands[ncommands - 1].description = strdup(value);
 		return 0;
+	}
+	else if(!strcmp(option, "windows")){
+		if(!strcmp(value, "no")){
+			commands[ncommands - 1].windows = 0;
+		}
 	}
 
 	//add an argument to the last command

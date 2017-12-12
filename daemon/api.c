@@ -243,8 +243,8 @@ static int api_send_commands(http_client_t* client){
 
 		//dump a command
 		//FIXME escaping
-		snprintf(send_buf, sizeof(send_buf), "%s{\"name\":\"%s\",\"description\":\"%s\",\"args\":[",
-				u ? "," : "", command->name, command->description ? command->description : "");
+		snprintf(send_buf, sizeof(send_buf), "%s{\"name\":\"%s\",\"description\":\"%s\",\"windows\":%zu,\"args\":[",
+				u ? "," : "", command->name, command->description ? command->description : "", command->windows);
 		network_send(client->fd, send_buf);
 
 		for(p = 0; p < command->nargs; p++){
