@@ -14,7 +14,7 @@ static Display* display_handle = NULL;
 static Atom rp_command, rp_command_request, rp_command_result;
 
 static int x11_run_command(char* command){
-	int rv = 0;
+	int rv = 1;
 	XEvent ev;
 	Window root = DefaultRootWindow(display_handle);
 	Window w = XCreateSimpleWindow(display_handle, root, 0, 0, 1, 1, 0, 0, 0);
@@ -22,7 +22,12 @@ static int x11_run_command(char* command){
 
 	if(!command_string){
 		fprintf(stderr, "Failed to allocate memory\n");
-		rv = 1;
+		goto bail;
+	}
+
+	if(!rp_command || !rp_command_request || !rp_command_result){
+		fprintf(stderr, "Window manager interaction disabled, would have run: %s\n", command);
+		rv = 0;
 		goto bail;
 	}
 
@@ -155,9 +160,8 @@ int x11_ok(){
 		return 1;
 	}
 
-	if(!rp_command || !rp_command_request){
-		fprintf(stderr, "Failed to query ratpoison-specific Atoms\n");
-		return 1;
+	if(!rp_command || !rp_command_request || !rp_command_result){
+		fprintf(stderr, "Failed to query ratpoison-specific Atoms, window manager interaction disabled\n");
 	}
 	return 0;
 }
