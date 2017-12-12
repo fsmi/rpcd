@@ -137,6 +137,16 @@ class Controller {
 		let command = this.commands[i];
 		this.status(`Start command: ${i}`);
 
+		let radio = document.querySelector('input[name="commands"]:checked');
+
+		if (command.args.length > 0 && radio.value !== i) {
+			this.status(`First enter arguments.`);
+			let target = document.querySelector(`#command_${i}`);
+			target.checked = true;
+			target.dispatchEvent(new Event('change'));
+			return;
+		}
+
 		let args = {};
 
 		let ret = command.args.every((val, i) => {
