@@ -13,10 +13,10 @@
 	</head>
 	<body>
 		<main id="content">
-			<input id="tabl" type="radio" name="tabs" checked />
+			<input id="tabl" type="radio" name="tabs" checked onclick="window.location.hash = '#layouts';" />
 			<label class="tab_button" for="tabl">Layouts</label>
 
-			<input id="tabc" type="radio" name="tabs" />
+			<input id="tabc" type="radio" name="tabs" onclick="window.location.hash = '#commands';" />
 			<label class="tab_button" for="tabc">Commands</label>
 			<span id="reset" onclick="window.controller.reset();">Reset</span>
 
