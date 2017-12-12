@@ -169,12 +169,13 @@ class Controller {
 		if (!ret) {
 			return;
 		}
-
 		let options = {
-			fullscreen: document.querySelector('#fullscreen').checked ? 1 : 0,
-			frame: parseInt(document.querySelector('#cmdFrame').value, 10),
 			arguments: args
 		};
+		if (command.windows && command.windows > 0) {
+			options.fullscreen = document.querySelector('#fullscreen').checked ? 1 : 0;
+			options.frame = parseInt(document.querySelector('#cmdFrame').value, 10);
+		}
 
 		this.ajax(`${window.config.api}/command/${command.name}`, 'POST', options).then(
 		(ans) => {
