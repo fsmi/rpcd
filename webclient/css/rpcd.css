@@ -283,6 +283,20 @@ ul {
 	clear: both;
 }
 
+.api-error {
+    position: fixed;
+    left: 0;
+	width: 100%;
+    top: 50%;
+    background-color: red;
+    padding: 1em;
+    border-radius: 4px;
+    color: white;
+    font-weight: bolder;
+    font-size: 1.5rem;
+}
+
+
 select {
 	padding: 5px;
 	font-size: 13px;

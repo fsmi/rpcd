@@ -6,6 +6,7 @@ class Controller {
 				if (request.readyState === XMLHttpRequest.DONE) {
 					switch(request.status) {
 						case 200:
+							document.querySelector('#status-box').classList.remove('api-error');
 							try {
 								var content = JSON.parse(request.responseText);
 								resolve(content);
@@ -22,7 +23,9 @@ class Controller {
 							}
 							break;
 						case 0:
+							document.querySelector('#status-box').classList.add('api-error');
 							reject('Failed to access API');
+							break;
 						default:
 							reject(`${request.status}: ${request.statusText}`);
 					}
@@ -237,7 +240,14 @@ class Controller {
 	fillFrameBox() {
 		let box = document.querySelector('#cmdFrame');
 		box.innerHTML = '';
-		let layout = this.layouts[this.state.layout];
+		console.log(this.state.layout);
+		let layout = this.layouts.find((l) => {
+			return l.name === this.state.layout;
+		});
+
+		if (!layout) {
+			return;
+		}
 
 		layout.frames.forEach((frame, i) => {
 			let option = document.createElement('option');
@@ -251,7 +261,7 @@ class Controller {
 		let cmd = this.commands[event.target.value];
 
 		document.querySelector('#cmdHeadline').textContent = cmd.name;
-		document.querySelector('#cmdDescription').textContent = cmd.description;
+		document.querySelector('#cmdDescription').innerText = cmd.description;
 		this.fillFrameBox();
 
 		let cmd_args = document.querySelector('#cmd_args');
@@ -294,6 +304,11 @@ class Controller {
 		this.ajax(`${window.config.api}/status`, 'GET')
 			.then((state) => {
 				console.log(state);
+				let oldstate = this.state;
+				this.state = state;
+				if (oldstate.layout !== this.state.layout) {
+					this.fillFrameBox();
+				}
 				if (state.running) {
 					this.commands.forEach((elem, index) => {
 						let id = state.running.findIndex((val) => {
@@ -322,7 +337,7 @@ class Controller {
 		this.layouts = [];
 		this.commands = [];
 		this.state = {
-			layout: 0,
+			layout: "",
 			running: [0]
 		};
 		// dummies
