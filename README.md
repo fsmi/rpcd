@@ -46,17 +46,44 @@ The daemon configuration file closely mirrors the standard `ini` file format. An
 configuration may be found in [daemon/rpcd.conf](daemon/rpcd.conf).
 Sub-configuration files can be pulled in while parsing with an `include <file>` line.
 
-To generate a layout dump from an existing ratpoison instance, run `ratpoison -c sfdump`.
+Some section types (`layout` and `command`) describe named elements. This name is provided
+in the section header, separated from the keyword by a space.
+
+| Section		| Option	| Default value		| Example value		| Description				| Notes
+|-----------------------|---------------|-----------------------|-----------------------|---------------------------------------|------
+|[web]			| bind		| none			| `10.23.0.1 8080`	| HTTP API host and port		|
+|[x11]			| display	| `:0`			| `:0.0`		| X11 display identifier to use		|
+|			| deflayout	| none			| `layout_name`		| Layout to apply on reset		|
+|[layout `name`]	| file		| none			| `path/to/file.sfdump` | Path to a ratpoison `sfdump`		| required
+|[command `name`]	| description	| none			| `What does it do`	| Command help/description		|
+|			| command	| none			| `/bin/echo %Var1`	| Command to execute including arguments| required
+|			| `VariableName`| none			| `string Arg1`		| Command argument variable specification (see below) |
+
+Commands may have any number of user-specifiable arguments, which replace the `%Variable` placeholders in the command specification.
+Argument configuration is specified in command sections by assigning configuration to an option with the same name, ie to configure the
+variable `%Var1`, you assign the specification to the option `Var1`.
+
+Variables may either be of the type `enum`, providing a fixed set of values (separated by space characters) for the user to choose from,
+or of the type `string`, allowing free-form user entry via a text field. For `enum` arguments, variable values exactly match the specified
+options. For `string` arguments, an optional hint may be supplied, which is displayed as an entry hint within the web client.
+
+Placeholders for which no argument configuration is specified are not replaced.
 
 ## Usage
 
-* Point your browser to the web client
-* Select a layout to view it
-* Load a layout to apply it to the screen
-* Select a command to see its options
-* Fill the options to your liking
-* Click `Run` to start the command
-* Click `Stop` to kill the program
+* To run a command
+	* Point your browser to the web client
+	* Select a command to see its options
+	* Fill the options to your liking
+	* Click `Run` to start the command
+	* Click `Stop` to kill the program
+
+* To change the layout
+	* Point your browser to the web client
+	* Select a layout to view it
+	* Click `Apply` to activate it on the screen
+
+To generate a layout dump from an existing ratpoison instance, run `ratpoison -c sfdump`.
 
 ## Background
 
@@ -78,3 +105,6 @@ executing `undo` at termination, rolling back the last layout change.
 
 * Special characters and spaces in layout/command names currently cause problems. This may be fixed
 in the (near) future.
+* `string` arguments allow free-form user supplied data to be passed to spawned commands, presenting
+a possible security risk if not properly sanitized. Properly checking and sanitizing user input is
+the responsibility of the called command.
