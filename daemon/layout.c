@@ -162,6 +162,15 @@ static void layout_free(layout_t* layout){
 
 int layout_new(char* name){
 	int rv = 0;
+	size_t u;
+
+	for(u = 0; u < nlayouts; u++){
+		if(!strcmp(layouts[u].name, name)){
+			fprintf(stderr, "Layout %s already exists\n", name);
+			return 1;
+		}
+	}
+
 	layouts = realloc(layouts, (nlayouts + 1) * sizeof(layout_t));
 	if(!layouts){
 		nlayouts = 0;

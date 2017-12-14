@@ -292,6 +292,15 @@ static void command_free(command_t* command){
 }
 
 int command_new(char* name){
+	size_t u;
+
+	for(u = 0; u < ncommands; u++){
+		if(!strcmp(commands[u].name, name)){
+			fprintf(stderr, "Command %s already defined\n", name);
+			return 1;
+		}
+	}
+
 	commands = realloc(commands, (ncommands + 1) * sizeof(command_t));
 	if(!commands){
 		ncommands = 0;
