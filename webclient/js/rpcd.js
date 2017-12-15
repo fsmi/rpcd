@@ -237,7 +237,14 @@ class Controller {
 	fillFrameBox() {
 		let box = document.querySelector('#cmdFrame');
 		box.innerHTML = '';
-		let layout = this.layouts[this.state.layout];
+		console.log(this.state.layout);
+		let layout = this.layouts.find((l) => {
+			return l.name === this.state.layout;
+		});
+
+		if (!layout) {
+			return;
+		}
 
 		layout.frames.forEach((frame, i) => {
 			let option = document.createElement('option');
@@ -294,6 +301,11 @@ class Controller {
 		this.ajax(`${window.config.api}/status`, 'GET')
 			.then((state) => {
 				console.log(state);
+				let oldstate = this.state;
+				this.state = state;
+				if (oldstate.layout !== this.state.layout) {
+					this.fillFrameBox();
+				}
 				if (state.running) {
 					this.commands.forEach((elem, index) => {
 						let id = state.running.findIndex((val) => {
@@ -322,7 +334,7 @@ class Controller {
 		this.layouts = [];
 		this.commands = [];
 		this.state = {
-			layout: 0,
+			layout: "",
 			running: [0]
 		};
 		// dummies
