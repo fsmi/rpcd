@@ -336,6 +336,7 @@ int command_config(char* option, char* value){
 		if(!strcmp(value, "no")){
 			commands[ncommands - 1].windows = 0;
 		}
+		return 0;
 	}
 
 	//add an argument to the last command
