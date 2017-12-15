@@ -6,6 +6,7 @@ class Controller {
 				if (request.readyState === XMLHttpRequest.DONE) {
 					switch(request.status) {
 						case 200:
+							document.querySelector('#status-box').classList.remove('api-error');
 							try {
 								var content = JSON.parse(request.responseText);
 								resolve(content);
@@ -22,7 +23,9 @@ class Controller {
 							}
 							break;
 						case 0:
+							document.querySelector('#status-box').classList.add('api-error');
 							reject('Failed to access API');
+							break;
 						default:
 							reject(`${request.status}: ${request.statusText}`);
 					}
