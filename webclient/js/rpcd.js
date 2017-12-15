@@ -24,7 +24,11 @@ class Controller {
 							break;
 						case 0:
 							document.querySelector('#status-box').classList.add('api-error');
-							reject('Failed to access API');
+							if (window.location.protocol === 'https:') {
+								reject('Cannot connect to rpcd if site is served over https.');
+							} else {
+								reject('Failed to access API');
+							}
 							break;
 						default:
 							reject(`${request.status}: ${request.statusText}`);
@@ -340,6 +344,13 @@ class Controller {
 			layout: "",
 			running: [0]
 		};
+
+		if (window.config.api.startsWith('https:')) {
+			document.querySelector('#status-box').classList.add('api-error');
+			this.status('https for rpcd is not implemented yet.');
+			return;
+		}
+
 		// dummies
 		let lp = this.ajax(`${window.config.api}/layouts`, 'GET');
 		lp.then((layouts) => {
