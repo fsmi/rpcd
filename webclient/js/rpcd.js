@@ -258,7 +258,7 @@ class Controller {
 		let cmd = this.commands[event.target.value];
 
 		document.querySelector('#cmdHeadline').textContent = cmd.name;
-		document.querySelector('#cmdDescription').textContent = cmd.description;
+		document.querySelector('#cmdDescription').innerText = cmd.description;
 		this.fillFrameBox();
 
 		let cmd_args = document.querySelector('#cmd_args');
