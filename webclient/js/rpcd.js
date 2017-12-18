@@ -91,15 +91,16 @@ class Controller {
 
 			if (prefix === 'command') {
 				button = this.createButton(`${prefix}_${i}_stop`,
-					'stop', () => {
+					'\u25A0', () => {
 						this.stopCommand(i);
-					});
+					}, 'command-button');
+				button.classList.add('stop')
 				button.classList.add('hidden');
 				li.appendChild(button);
 				button = this.createButton(`${prefix}_${i}_start`,
-					'start', () => {
+					'\u25B8', () => {
 						this.startCommand(i);
-					});
+					}, 'command-button');
 			} else {
 				button = this.createButton(`${prefix}_${i}_button`,
 					'apply', this.applyLayout.bind(this));
@@ -114,9 +115,12 @@ class Controller {
 		});
 	}
 
-	createButton(id, text, listener) {
+	createButton(id, text, listener, css_class) {
 		let span = document.createElement('span');
-		span.classList.add('stopButton');
+		span.classList.add('elem-button');
+		if (css_class) {
+			span.classList.add(css_class);
+		}
 		span.id = id;
 		span.textContent = text;
 		span.addEventListener('click', listener);
@@ -321,10 +325,13 @@ class Controller {
 
 						let elemStart = document.querySelector(`#command_${index}_start`);
 						let elemStop = document.querySelector(`#command_${index}_stop`);
+						let label = document.querySelector(`#command_${index} + label`);
 						if (id < 0) {
+							label.classList.remove('running');
 							elemStop.classList.add('hidden');
 							elemStart.classList.remove('hidden');
 						} else {
+							label.classList.add('running');
 							elemStart.classList.add('hidden');
 							elemStop.classList.remove('hidden');
 						}
