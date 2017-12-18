@@ -313,3 +313,8 @@ select {
 	transition: border-color ease-in-out 0.15s, box-shadow ease-in-out 0.15s;
 
 }
+
+#repo-link{
+	color:#888;
+	float:right;
+}
