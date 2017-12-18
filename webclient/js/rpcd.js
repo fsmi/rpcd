@@ -25,7 +25,7 @@ class Controller {
 						case 0:
 							document.querySelector('#status-box').classList.add('api-error');
 							if (window.location.protocol === 'https:') {
-								reject('Cannot connect to rpcd if site is served over https.');
+								reject('The API is not available via HTTPS, please connect via HTTP');
 							} else {
 								reject('Failed to access API');
 							}
@@ -354,7 +354,7 @@ class Controller {
 
 		if (window.config.api.startsWith('https:')) {
 			document.querySelector('#status-box').classList.add('api-error');
-			this.status('https for rpcd is not implemented yet.');
+			this.status('API not accessible over HTTPS');
 			return;
 		}
 
