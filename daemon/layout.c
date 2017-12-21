@@ -36,38 +36,18 @@ layout_t* layout_find(char* name){
 	return NULL;
 }
 
-static int layout_parse(char* layout_file, layout_t* layout){
-	struct stat source_info;
+static int layout_parse(char* layout_string, size_t len, layout_t* layout){
 	size_t u, p;
-	int source, rv = 0;
-	char* layout_data = NULL, *source_map = NULL, *frame_info = NULL, *frame_tokenize = NULL, *token = NULL, *parameter_tokenize = NULL;
+	int rv = 1;
+	char *layout_data = NULL, *frame_info = NULL, *frame_tokenize = NULL, *token = NULL, *parameter_tokenize = NULL;
 
-	if(stat(layout_file, &source_info) < 0){
-		fprintf(stderr, "Failed to access layout file %s: %s\n", layout_file, strerror(errno));
-		return 1;
-	}
-
-	layout_data = calloc(source_info.st_size + 1, sizeof(char));
+	layout_data = calloc(len + 1, sizeof(char));
 	if(!layout_data){
 		fprintf(stderr, "Failed to allocate memory\n");
 		return 1;
 	}
-	
-	source = open(layout_file, O_RDONLY);
-	if(source < 0){
-		fprintf(stderr, "Failed to read layout file %s: %s\n", layout_file, strerror(errno));
-		rv = 1;
-		goto bail;
-	}
 
-	source_map = mmap(0, source_info.st_size, PROT_READ, MAP_PRIVATE, source, 0);
-	if(source_map == MAP_FAILED){
-		fprintf(stderr, "Failed to load layout file %s: %s\n", layout_file, strerror(errno));
-		rv = 1;
-		goto bail;
-	}
-
-	memcpy(layout_data, source_map, source_info.st_size);
+	memcpy(layout_data, layout_string, len);
 	u = 0;
 	for(p = 0; layout_data[p]; p++){
 		//strip non-graphs completely, saves on parsing overhead
@@ -119,7 +99,6 @@ static int layout_parse(char* layout_file, layout_t* layout){
 		layout->frames = realloc(layout->frames, (layout->nframes + 1) * sizeof(frame_t));
 		if(!layout->frames){
 			fprintf(stderr, "Failed to allocate memory\n");
-			rv = 1;
 			goto bail;
 		}
 
@@ -127,8 +106,38 @@ static int layout_parse(char* layout_file, layout_t* layout){
 		layout->nframes++;
 	}
 
+	rv = 0;
+
 bail:
 	free(layout_data);
+	return rv;
+}
+
+static int layout_parse_file(char* layout_file, layout_t* layout){
+	struct stat source_info;
+	int source, rv = 1;
+	char* source_map = NULL;
+
+	if(stat(layout_file, &source_info) < 0){
+		fprintf(stderr, "Failed to access layout file %s: %s\n", layout_file, strerror(errno));
+		return 1;
+	}
+
+	source = open(layout_file, O_RDONLY);
+	if(source < 0){
+		fprintf(stderr, "Failed to read layout file %s: %s\n", layout_file, strerror(errno));
+		goto bail;
+	}
+
+	source_map = mmap(0, source_info.st_size, PROT_READ, MAP_PRIVATE, source, 0);
+	if(source_map == MAP_FAILED){
+		fprintf(stderr, "Failed to load layout file %s: %s\n", layout_file, strerror(errno));
+		goto bail;
+	}
+
+	rv = layout_parse(source_map, source_info.st_size, layout);
+
+bail:
 	if(source_map){
 		munmap(source_map, source_info.st_size);
 	}
@@ -190,7 +199,7 @@ int layout_config(char* option, char* value){
 	}
 
 	if(!strcmp(option, "file")){
-		return layout_parse(value, layouts + (nlayouts - 1));
+		return layout_parse_file(value, layouts + (nlayouts - 1));
 	}
 
 	fprintf(stderr, "Unknown layout option %s\n", option);
