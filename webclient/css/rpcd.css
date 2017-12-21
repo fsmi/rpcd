@@ -85,10 +85,12 @@ h4 {
 	border-bottom: 1px solid #ddd;
 }
 
+
 input[name="layouts"]:checked ~ span,
 input[name="commands"]:checked ~ span {
 	border-right: 2px solid orange;
 }
+
 
 input[name="layouts"]:checked ~ label,
 input[name="commands"]:checked ~ label {
@@ -96,19 +98,19 @@ input[name="commands"]:checked ~ label {
 }
 
 main {
-  min-width: 320px;
-  width: 90%;
-  height: 100%;
-  margin: 0 auto;
-  background: #fff;
+	min-width: 320px;
+	width: 90%;
+	height: 100%;
+	margin: 0 auto;
+	background: #fff;
 }
 
 section {
-  display: none;
-  height: 90%;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  border-top-left-radius: 0;
+	display: none;
+	height: 90%;
+	border: 1px solid #ddd;
+	border-radius: 4px;
+	border-top-left-radius: 0;
 }
 
 input[type="radio"] {
@@ -120,14 +122,14 @@ input:checked + label {
 }
 
 main > input:checked + label {
-  border: 1px solid #ddd;
-  border-top: 2px solid orange;
-  border-bottom: 1px solid #fff;
+	border: 1px solid #ddd;
+	border-top: 2px solid orange;
+	border-bottom: 1px solid #fff;
 }
 
 label:hover, #reset:hover {
-  color: #888;
-  cursor: pointer;
+	color: #888;
+	cursor: pointer;
 }
 
 .ul {
@@ -135,13 +137,13 @@ label:hover, #reset:hover {
 }
 
 label, #reset {
-  display: inline-block;
-  margin: 0 0 -1px;
-  padding: 15px 25px;
-  font-weight: 600;
-  text-align: center;
-  color: #bbb;
-  border: 1px solid transparent;
+	display: inline-block;
+	margin: 0 0 -1px;
+	padding: 15px 25px;
+	font-weight: 600;
+	text-align: center;
+	color: #bbb;
+	border: 1px solid transparent;
 }
 
 #reset:hover {
@@ -177,15 +179,22 @@ canvas {
 	grid-template-columns: 1fr 5em;
 }
 
-.stopButton {
-    border: 1px solid #ddd;
-    padding: 2em 1em;
+.elem-button {
+	border: 1px solid #ddd;
+	padding: 2em 1em;
 	text-transform: uppercase;
+	text-align: center;
 }
 
-.stopButton:hover {
+.command-button {
+	padding: 1em;
+	font-size: 1.8rem;
+	line-height: 0.9;
+}
+
+.elem-button:hover {
 	background-color: #ddd;
-    cursor: pointer;
+	cursor: pointer;
 	color: #555;
 }
 
@@ -284,17 +293,18 @@ ul {
 }
 
 .api-error {
-    position: fixed;
-    left: 0;
+	position: fixed;
+	left: 0;
 	width: 100%;
-    top: 50%;
-    background-color: red;
-    padding: 1em;
-    border-radius: 4px;
-    color: white;
-    font-weight: bolder;
-    font-size: 1.5rem;
+	top: 50%;
+	background-color: red;
+	padding: 1em;
+	border-radius: 4px;
+	color: white;
+	font-weight: bolder;
+	font-size: 1.5rem;
 }
+
 
 
 select {
@@ -313,6 +323,15 @@ select {
 	transition: border-color ease-in-out 0.15s, box-shadow ease-in-out 0.15s;
 
 }
+
+.stop:hover {
+	background-color: #fc0000;
+	color: white;
+}
+
+.stop {
+	background-color: #dd0000;
+    color: white;
 
 #repo-link{
 	color:#888;
