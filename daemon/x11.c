@@ -13,7 +13,57 @@ static char* default_layout_name = NULL;
 static Display* display_handle = NULL;
 static Atom rp_command, rp_command_request, rp_command_result;
 
-static int x11_run_command(char* command){
+//See ratpoison:src/communications.c for the original implementation of the ratpoison
+//command protocol
+static int x11_fetch_response(Window w, char** response){
+	int format, rv = -1;
+	unsigned long items, bytes;
+	unsigned char* result = NULL;
+	Atom type;
+
+	if(XGetWindowProperty(display_handle, w, rp_command_result,
+				0, 0, False, XA_STRING,
+				&type, &format, &items, &bytes, &result) != Success
+			|| !result){
+		fprintf(stderr, "Failed to fetch ratpoison command result status\n");
+		goto bail;
+	}
+
+	XFree(result);
+
+	if(XGetWindowProperty(display_handle, w, rp_command_result,
+				0, (bytes / 4) + ((bytes % 4) ? 1 : 0), True, XA_STRING,
+				&type, &format, &items, &bytes, &result) != Success
+			|| !result){
+		fprintf(stderr, "Failed to fetch ratpoison command result\n");
+		goto bail;
+	}
+
+	if(*result){
+		//command failed, look for a reason
+		if(*result == '0'){
+			fprintf(stderr, "Ratpoison command failed: %s\n", result + 1);
+			goto bail;
+		}
+
+		//command ok
+		if(*result == '1'){
+			*response = strdup((char*) (result + 1));
+			if(!*response){
+				fprintf(stderr, "Failed to allocate memory\n");
+			}
+		}
+	}
+
+	rv = 0;
+bail:
+	if(result){
+		XFree(result);
+	}
+	return rv;
+}
+
+static int x11_run_command(char* command, char** response){
 	int rv = 1;
 	XEvent ev;
 	Window root = DefaultRootWindow(display_handle);
@@ -40,6 +90,9 @@ static int x11_run_command(char* command){
 	for(;;){
 		XMaskEvent(display_handle, PropertyChangeMask, &ev);
 		if(ev.xproperty.atom == rp_command_result && ev.xproperty.state == PropertyNewValue){
+			if(response){
+				x11_fetch_response(w, response);
+			}
 			break;
 		}
 	}
@@ -93,7 +146,7 @@ int x11_activate_layout(layout_t* layout){
 	}
 
 	fprintf(stderr, "Generated layout: %s\n", layout_string);
-	rv = x11_run_command(layout_string);
+	rv = x11_run_command(layout_string, NULL);
 	current_layout = layout;
 bail:
 	free(layout_string);
@@ -101,17 +154,17 @@ bail:
 }
 
 int x11_fullscreen(){
-	return x11_run_command("only");
+	return x11_run_command("only", NULL);
 }
 
 int x11_rollback(){
-	return x11_run_command("undo");
+	return x11_run_command("undo", NULL);
 }
 
 int x11_select_frame(size_t frame_id){
 	char command_buffer[DATA_CHUNK];
 	snprintf(command_buffer, sizeof(command_buffer), "fselect %zu", frame_id);
-	return x11_run_command(command_buffer);
+	return x11_run_command(command_buffer, NULL);
 }
 
 layout_t* x11_current_layout(){
