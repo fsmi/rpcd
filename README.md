@@ -55,6 +55,7 @@ in the section header, separated from the keyword by a space.
 |[x11]			| display	| `:0`			| `:0.0`		| X11 display identifier to use		|
 |			| deflayout	| none			| `layout_name`		| Layout to apply on reset		|
 |[layout `name`]	| file		| none			| `path/to/file.sfdump` | Path to a ratpoison `sfdump`		| required
+|			| read-layout	| none			| `yes`			| Read the layout data from a running `ratpoison`|
 |[command `name`]	| description	| none			| `What does it do`	| Command help/description		|
 |			| command	| none			| `/bin/echo %Var1`	| Command to execute including arguments| required
 |			| `VariableName`| none			| `string Arg1`		| Command argument variable specification (see below) |

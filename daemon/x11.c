@@ -63,7 +63,7 @@ bail:
 	return rv;
 }
 
-static int x11_run_command(char* command, char** response){
+int x11_run_command(char* command, char** response){
 	int rv = 1;
 	XEvent ev;
 	Window root = DefaultRootWindow(display_handle);
@@ -90,8 +90,9 @@ static int x11_run_command(char* command, char** response){
 	for(;;){
 		XMaskEvent(display_handle, PropertyChangeMask, &ev);
 		if(ev.xproperty.atom == rp_command_result && ev.xproperty.state == PropertyNewValue){
+			rv = 0;
 			if(response){
-				x11_fetch_response(w, response);
+				rv = x11_fetch_response(w, response);
 			}
 			break;
 		}

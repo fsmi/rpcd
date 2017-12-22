@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include "layout.h"
+#include "x11.h"
 
 static size_t nlayouts = 0;
 static layout_t* layouts = NULL;
@@ -193,6 +194,9 @@ int layout_new(char* name){
 }
 
 int layout_config(char* option, char* value){
+	char* read_layout = NULL;
+	int rv = 1;
+
 	if(!layouts){
 		fprintf(stderr, "No layouts defined yet\n");
 		return 1;
@@ -200,6 +204,17 @@ int layout_config(char* option, char* value){
 
 	if(!strcmp(option, "file")){
 		return layout_parse_file(value, layouts + (nlayouts - 1));
+	}
+	if(!strcmp(option, "read-display")
+			&& !strcmp(value, "yes")){
+		if(x11_run_command("sfdump", &read_layout)){
+			return 1;
+		}
+
+		rv = layout_parse(read_layout, strlen(read_layout), layouts + (nlayouts - 1));
+
+		free(read_layout);
+		return rv;
 	}
 
 	fprintf(stderr, "Unknown layout option %s\n", option);
