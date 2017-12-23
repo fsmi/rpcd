@@ -207,7 +207,7 @@ int layout_config(char* option, char* value){
 	}
 	if(!strcmp(option, "read-display")
 			&& !strcmp(value, "yes")){
-		if(x11_run_command("sfdump", &read_layout)){
+		if(x11_fetch_layout(&read_layout)){
 			return 1;
 		}
 

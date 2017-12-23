@@ -63,7 +63,7 @@ bail:
 	return rv;
 }
 
-int x11_run_command(char* command, char** response){
+static int x11_run_command(char* command, char** response){
 	int rv = 1;
 	XEvent ev;
 	Window root = DefaultRootWindow(display_handle);
@@ -102,6 +102,10 @@ bail:
 	free(command_string);
 	XDestroyWindow(display_handle, w);
   	return rv;
+}
+
+int x11_fetch_layout(char** layout){
+	return x11_run_command("sfdump", layout);
 }
 
 int x11_activate_layout(layout_t* layout){
