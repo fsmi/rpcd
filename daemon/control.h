@@ -26,7 +26,7 @@ typedef struct /*_automation_variable_t*/ {
 //TODO conditional operators
 
 Window control_get_window(size_t frame_id);
-int control_repatriate(Window w, size_t frame_id);
+int control_repatriate(size_t frame_id, Window w);
 //int control_handle_event(XEvent ev);
 
 int control_window_new(char* name);

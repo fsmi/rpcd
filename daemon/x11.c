@@ -6,12 +6,14 @@
 #include <X11/Xatom.h>
 
 #include "x11.h"
+#include "control.h"
 
 static layout_t* default_layout = NULL;
 static layout_t* current_layout = NULL;
 static char* default_layout_name = NULL;
 static Display* display_handle = NULL;
 static Atom rp_command, rp_command_request, rp_command_result;
+static int repatriate_windows = 0;
 
 //See ratpoison:src/communications.c for the original implementation of the ratpoison
 //command protocol
@@ -104,6 +106,36 @@ bail:
   	return rv;
 }
 
+static int x11_repatriate(){
+	int rv = 1;
+	size_t frame_id, window;
+	char* layout = NULL, *frame = NULL;
+	if(x11_fetch_layout(&layout) || !layout){
+		fprintf(stderr, "Failed to repatriate windows, could not read layout\n");
+		return 1;
+	}
+
+	for(frame = strtok(layout, ","); frame; frame = strtok(NULL, ",")){
+		if(!strstr(frame, ":number") || !strstr(frame, ":window")){
+			fprintf(stderr, "Skipping frame, missing either ID or window\n");
+			continue;
+		}
+
+		frame_id = strtoul(strstr(frame, ":number") + 7, NULL, 10);
+		window = strtoul(strstr(frame, ":window") + 7, NULL, 10);
+
+		if(control_repatriate(frame_id, window)){
+			fprintf(stderr, "Failed to repatriate frame %zu\n", frame_id);
+			goto bail;
+		}
+	}
+
+	rv = 0;
+bail:
+	free(layout);
+	return rv;
+}
+
 int x11_fetch_layout(char** layout){
 	return x11_run_command("sfdump", layout);
 }
@@ -120,11 +152,12 @@ int x11_activate_layout(layout_t* layout){
 	}
 
 	for(frame = 0; frame < layout->nframes; frame++){
-		required = snprintf(layout_string + off, left, "%s(frame :number %zu :x %zu :y %zu :width %zu :height %zu :screenw %zu :screenh %zu) %zu",
+		required = snprintf(layout_string + off, left, "%s(frame :number %zu :x %zu :y %zu :width %zu :height %zu :screenw %zu :screenh %zu :window %zu) %zu",
 				frame ? "," : "", layout->frames[frame].id,
 				layout->frames[frame].bbox[0], layout->frames[frame].bbox[1],
 				layout->frames[frame].bbox[2], layout->frames[frame].bbox[3],
 				layout->frames[frame].screen[0], layout->frames[frame].screen[1],
+				control_get_window(layout->frames[frame].id),
 				layout->frames[frame].screen[2]);
 
 		if(required < 0){
@@ -207,6 +240,12 @@ int x11_config(char* option, char* value){
 		}
 		return 0;
 	}
+	else if(!strcmp(option, "repatriate")){
+		if(!strcmp(value, "yes")){
+			repatriate_windows = 1;
+		}
+		return 0;
+	}
 
 	fprintf(stderr, "Invalid option %s in x11 section\n", option);
 	return 1;
@@ -220,6 +259,11 @@ int x11_ok(){
 
 	if(!rp_command || !rp_command_request || !rp_command_result){
 		fprintf(stderr, "Failed to query ratpoison-specific Atoms, window manager interaction disabled\n");
+	}
+
+	if(repatriate_windows){
+		x11_repatriate();
+		repatriate_windows = 0;
 	}
 	return 0;
 }

@@ -205,16 +205,18 @@ int layout_config(char* option, char* value){
 	if(!strcmp(option, "file")){
 		return layout_parse_file(value, layouts + (nlayouts - 1));
 	}
-	if(!strcmp(option, "read-display")
-			&& !strcmp(value, "yes")){
-		if(x11_fetch_layout(&read_layout)){
-			return 1;
+	if(!strcmp(option, "read-display")){
+		if(!strcmp(value, "yes")){
+			if(x11_fetch_layout(&read_layout)){
+				return 1;
+			}
+
+			rv = layout_parse(read_layout, strlen(read_layout), layouts + (nlayouts - 1));
+
+			free(read_layout);
+			return rv;
 		}
-
-		rv = layout_parse(read_layout, strlen(read_layout), layouts + (nlayouts - 1));
-
-		free(read_layout);
-		return rv;
+		return 0;
 	}
 
 	fprintf(stderr, "Unknown layout option %s\n", option);
