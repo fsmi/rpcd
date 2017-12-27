@@ -183,7 +183,6 @@ int x11_activate_layout(layout_t* layout){
 		left -= required;
 	}
 
-	fprintf(stderr, "Generated layout: %s\n", layout_string);
 	rv = x11_run_command(layout_string, NULL);
 	current_layout = layout;
 bail:
