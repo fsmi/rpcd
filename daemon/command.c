@@ -197,6 +197,9 @@ static int command_parse_json(command_t* command, command_instance_t* instance, 
 
 		command->display = x11_find(display_name);
 	}
+	else{
+		command->display = NULL;
+	}
 
 	if(display_info && frame_info){
 		int frame_id = -1;

@@ -22,13 +22,19 @@ GET /layouts
 	Response format
 		[
 			{
-				name:"Fullscreen",
-				frames:[
-					{id:1, x:0, y:0, w:300, h:400, screen:4},
-					...
-				],
-				screens:[
-					{id:5, w:1920, h:1080},
+				display:"disp1",
+				layouts:[
+					{
+						name:"Fullscreen",
+						frames:[
+							{id:1, x:0, y:0, w:300, h:400, screen:4},
+							...
+						],
+						screens:[
+							{id:5, w:1920, h:1080},
+							...
+						]
+					},
 					...
 				]
 			},
@@ -40,7 +46,10 @@ GET/POST /status
 	current layout and running commands
 	Response format:
 		{
-			layout:"name",
+			layout:[
+				{display:"disp1", layout:"name"},
+				...
+			],
 			running:[
 				"command1",
 				...
@@ -48,18 +57,19 @@ GET/POST /status
 		}
 
 GET/POST /reset
-	Restore initial state, including layout
+	Stop all running commands and load default layout
 
 GET/POST /stop/name
 	Stop a running command
 
-GET/POST /layout/name
-	Activate a layout
+GET/POST /layout/display/name
+	Activate a layout on a display
 
 POST /command/name
 	Start a command
 	Request format
 		{
+			display:"disp1",
 			frame:4,
 			fullscreen:1,
 			arguments:{
@@ -67,3 +77,4 @@ POST /command/name
 				...
 			}
 		}
+
