@@ -1,5 +1,7 @@
 #ifndef RPCD_LAYOUT_H
 #define RPCD_LAYOUT_H
+struct _x11_display_t;
+
 typedef struct /*_ratpoison_layout_frame*/ {
 	size_t id;
 	size_t bbox[4]; //x y w h
@@ -11,6 +13,7 @@ typedef struct /*_ratpoison_layout_t*/ {
 	size_t nframes;
 	size_t max_screen;
 	frame_t* frames;
+	struct _x11_display_t* display;
 } layout_t;
 
 size_t layout_count();
