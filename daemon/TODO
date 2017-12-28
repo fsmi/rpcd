@@ -1,2 +1,23 @@
 Commands are not searched in PATH
-Running commands not yet shown in interface
+Run automation on startup / after reset
+Default automation: load default layout
+Rewrite OK functions
+Temporarily store started commands into frame-store
+Reset: kill all jobs
+
+command display member
+	might be NULL -> handling
+command_run
+	set display env
+	mark display busy
+
+config race condition:
+	define x11 a
+	define layout a:b
+	define x11 c
+	display_t in b is now invalid
+moving to an index would also allow removal of circular definition dependencies
+
+control
+	_run_automation
+Somehow, invalid FDs are passed into API handling

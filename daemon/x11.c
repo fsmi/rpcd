@@ -262,7 +262,7 @@ int x11_loop(fd_set* in, fd_set* out, int* max_fd){
 	if(!init_done){
 		for(u = 0; u < ndisplays; u++){
 			if(displays[u].default_layout_name){
-				displays[u].default_layout = layout_find(displays[u].default_layout_name);
+				displays[u].default_layout = layout_find(displays + u, displays[u].default_layout_name);
 				if(!displays[u].default_layout){
 					fprintf(stderr, "Failed to find default layout %s for %s\n", displays[u].default_layout_name, displays[u].name);
 					return 1;
