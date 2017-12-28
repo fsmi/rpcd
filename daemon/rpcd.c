@@ -8,8 +8,8 @@
 #include "config.h"
 
 #include "command.h"
-#include "layout.h"
 #include "x11.h"
+#include "layout.h"
 #include "api.h"
 #include "control.h"
 

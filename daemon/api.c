@@ -326,8 +326,9 @@ static int api_send_status(http_client_t* client){
 	size_t u, commands = command_count();
 	command_t* cmd = NULL;
 
+	//TODO redesign API
 	snprintf(send_buf, sizeof(send_buf),"{\"layouts\":%zu,\"commands\":%zu,\"layout\":\"%s\",\"running\":[",
-			layout_count(), command_count(), x11_current_layout()->name);
+			layout_count(), command_count(), x11_current_layout(NULL)->name);
 	rv |= network_send(client->fd, send_buf);
 
 	for(u = 0; u < commands; u++){

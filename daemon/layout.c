@@ -148,7 +148,7 @@ bail:
 	return rv;
 }
 
-static int layout_init(layout_t* layout, char* name){
+static int layout_init(layout_t* layout, char* name, display_t* display){
 	if(name && strlen(name) < 1){
 		fprintf(stderr, "Invalid layout name provided\n");
 		return 1;
@@ -158,7 +158,8 @@ static int layout_init(layout_t* layout, char* name){
 		.name = name ? strdup(name) : NULL,
 		.max_screen = 0,
 		.nframes = 0,
-		.frames = NULL
+		.frames = NULL,
+		.display = display
 	};
 	*layout = empty;
 	return 0;
@@ -167,16 +168,35 @@ static int layout_init(layout_t* layout, char* name){
 static void layout_free(layout_t* layout){
 	free(layout->name);
 	free(layout->frames);
-	layout_init(layout, NULL);
+	layout_init(layout, NULL, NULL);
 }
 
 int layout_new(char* name){
 	int rv = 0;
 	size_t u;
+	display_t* display = NULL;
+	char* display_name = NULL;
+
+	if(!strchr(name, ':')){
+		fprintf(stderr, "Layout does not define display, using first\n");
+		x11_get(0);
+	}
+	else{
+		display_name = name;
+		name = strchr(name, ':');
+		*name = 0;
+		name++;
+		display = x11_find(display_name);
+	}
+
+	if(!display){
+		fprintf(stderr, "Layout %s defined on nonexistent display\n", name);
+		return 1;
+	}
 
 	for(u = 0; u < nlayouts; u++){
-		if(!strcmp(layouts[u].name, name)){
-			fprintf(stderr, "Layout %s already exists\n", name);
+		if(!strcmp(layouts[u].name, name) && layouts[u].display == display){
+			fprintf(stderr, "Layout %s already exists on display\n", name);
 			return 1;
 		}
 	}
@@ -188,7 +208,7 @@ int layout_new(char* name){
 		return 1;
 	}
 
-	rv = layout_init(layouts + nlayouts, name);
+	rv = layout_init(layouts + nlayouts, name, display);
 	nlayouts++;
 	return rv;
 }
@@ -196,6 +216,7 @@ int layout_new(char* name){
 int layout_config(char* option, char* value){
 	char* read_layout = NULL;
 	int rv = 1;
+	layout_t* last = layouts + (nlayouts - 1);
 
 	if(!layouts){
 		fprintf(stderr, "No layouts defined yet\n");
@@ -203,15 +224,15 @@ int layout_config(char* option, char* value){
 	}
 
 	if(!strcmp(option, "file")){
-		return layout_parse_file(value, layouts + (nlayouts - 1));
+		return layout_parse_file(value, last);
 	}
 	if(!strcmp(option, "read-display")){
 		if(!strcmp(value, "yes")){
-			if(x11_fetch_layout(&read_layout)){
+			if(x11_fetch_layout(last->display, &read_layout)){
 				return 1;
 			}
 
-			rv = layout_parse(read_layout, strlen(read_layout), layouts + (nlayouts - 1));
+			rv = layout_parse(read_layout, strlen(read_layout), last);
 
 			free(read_layout);
 			return rv;

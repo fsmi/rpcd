@@ -12,7 +12,7 @@
 
 static enum {
 	conf_none,
-	conf_web,
+	conf_api,
 	conf_x11,
 	conf_layout,
 	conf_command
@@ -58,15 +58,21 @@ int config_parse(char* cfg_file){
 			//sanity check
 			
 			if((config_state == conf_layout && layout_ok())
-					|| (config_state == conf_command && command_ok())){
+					|| (config_state == conf_command && command_ok())
+					|| (config_state == conf_x11 && x11_ok())){
 				fprintf(stderr, "%s:%zu Cannot switch section before the previous configuration is done\n", cfg_file, line_no);
 				goto bail;
 			}
 
-			if(!strcmp(line, "[web]")){
-				config_state = conf_web;
+			if(!strcmp(line, "[api]")){
+				config_state = conf_api;
 			}
-			else if(!strcmp(line, "[x11]")){
+			else if(!strncmp(line, "[x11 ", 5)){
+				line[strlen(line) - 1] = 0;
+				if(x11_new(line + 5)){
+					goto bail;
+				}
+				config_state = conf_layout;
 				config_state = conf_x11;
 			}
 			else if(!strncmp(line, "[layout ", 8)){
@@ -107,7 +113,7 @@ int config_parse(char* cfg_file){
 				case conf_none:
 					fprintf(stderr, "%s:%zu No section specified\n", cfg_file, line_no);
 					goto bail;
-				case conf_web:
+				case conf_api:
 					if(api_config(line, argument)){
 						goto bail;
 					}

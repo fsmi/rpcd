@@ -1,3 +1,5 @@
+#include "x11.h"
+
 typedef enum /*_command_arg_type_t*/ {
 	arg_string,
 	arg_enum
@@ -23,6 +25,7 @@ typedef struct /*_rpcd_command_t*/ {
 	size_t nargs;
 	argument_t* args;
 
+	display_t* display;
 	instance_state state;
 	pid_t instance;
 	size_t restore_layout;

@@ -60,7 +60,7 @@ int command_reap(){
 					commands[u].state = stopped;
 					//if restore requested, undo layout change
 					if(commands[u].restore_layout){
-						x11_rollback();
+						x11_rollback(commands[u].display);
 						commands[u].restore_layout = 0;
 					}
 					fprintf(stderr, "Instance of %s stopped\n", commands[u].name);
@@ -180,6 +180,7 @@ static int command_verify_enum(argument_t* arg, char* value){
 }
 
 static int command_parse_json(command_t* command, command_instance_t* instance, ejson_struct* ejson) {
+	ejson_struct* display_info = ejson_find_key(ejson, "display", true);
 	ejson_struct* frame_info = ejson_find_key(ejson, "frame", true);
 	ejson_struct* fullscreen_info = ejson_find_key(ejson, "fullscreen", true);
 	ejson_struct* args = ejson_find_key(ejson, "arguments", true);
@@ -187,23 +188,33 @@ static int command_parse_json(command_t* command, command_instance_t* instance, 
 	size_t u;
 	argument_t* cmd_arg;
 
-	if(frame_info){
+	if(display_info){
+		char* display_name = NULL;
+		if(ejson_get_string(display_info, &display_name) != EJSON_OK){
+			fprintf(stderr, "Failed to parse display parameter\n");
+			return 1;
+		}
+
+		command->display = x11_find(display_name);
+	}
+
+	if(display_info && frame_info){
 		int frame_id = -1;
 		if(ejson_get_int(frame_info, &frame_id) != EJSON_OK){
 			fprintf(stderr, "Failed to parse frame parameter\n");
 		}
 		else{
-			x11_select_frame(frame_id);
+			x11_select_frame(command->display, frame_id);
 		}
 	}
 
-	if(fullscreen_info){
+	if(display_info && fullscreen_info){
 		int fullscreen = 0;
 		if(ejson_get_int(fullscreen_info, &fullscreen) != EJSON_OK) {
 			fprintf(stderr, "Failed to parse fullscreen parameter\n");
 		}
 		else if(fullscreen){
-			x11_fullscreen();
+			x11_fullscreen(command->display);
 			instance->restore_layout = 1;
 		}
 	}
