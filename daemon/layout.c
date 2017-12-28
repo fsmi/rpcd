@@ -26,11 +26,11 @@ layout_t* layout_get(size_t index){
 	return NULL;
 }
 
-layout_t* layout_find(char* name){
+layout_t* layout_find(display_t* display, char* name){
 	size_t u;
 
 	for(u = 0; u < nlayouts; u++){
-		if(!strcmp(layouts[u].name, name)){
+		if(layouts[u].display == display && !strcmp(layouts[u].name, name)){
 			return layouts + u;
 		}
 	}
@@ -178,7 +178,7 @@ int layout_new(char* name){
 	char* display_name = "-none-";
 
 	if(!strchr(name, ':')){
-		fprintf(stderr, "Layout does not define display, using first\n");
+		fprintf(stderr, "Layout does not define display, using first display available\n");
 		x11_get(0);
 	}
 	else{

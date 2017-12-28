@@ -99,7 +99,9 @@ static int network_send(int fd, char* data){
 }
 
 static void api_disconnect(http_client_t* client){
-	close(client->fd);
+	if(client->fd >= 0){
+		close(client->fd);
+	}
 
 	client->fd = -1;
 	client->recv_offset = 0;
@@ -277,42 +279,59 @@ static int api_send_commands(http_client_t* client){
 
 static int api_send_layouts(http_client_t* client){
 	char send_buf[RECV_CHUNK];
-	size_t layouts = layout_count(), u, p, q;
+	size_t layouts = layout_count(), displays = x11_count();
+	size_t c, u, p, q, first;
+	display_t* display = NULL;
 	layout_t* layout = NULL;
 
 	network_send(client->fd, "[");
-	for(u = 0; u < layouts; u++){
-		layout = layout_get(u);
+	for(c = 0; c < displays; c++){
+		first = 1;
+		display = x11_get(c);
 
-		//dump a single layout
-		//FIXME this is kinda ugly and disregards quoting
-		snprintf(send_buf, sizeof(send_buf), "%s{\"name\":\"%s\",\"frames\":[",
-				u ? "," : "", layout->name);
+		snprintf(send_buf, sizeof(send_buf), "%s{\"display\":\"%s\",\"layouts\":[",
+				c ? "," : "", display->name);
 		network_send(client->fd, send_buf);
 
-		for(p = 0; p < layout->nframes; p++){
-			snprintf(send_buf, sizeof(send_buf), "%s{\"id\":%zu,\"x\":%zu,\"y\":%zu,\"w\":%zu,\"h\":%zu,\"screen\":%zu}",
-					p ? "," : "", layout->frames[p].id,
-					layout->frames[p].bbox[0], layout->frames[p].bbox[1],
-					layout->frames[p].bbox[2], layout->frames[p].bbox[3],
-					layout->frames[p].screen[2]);
+
+		for(u = 0; u < layouts; u++){
+			layout = layout_get(u);
+			if(layout->display != display){
+				continue;
+			}
+	
+			//dump a single layout
+			//FIXME this is kinda ugly and disregards quoting
+			snprintf(send_buf, sizeof(send_buf), "%s{\"name\":\"%s\",\"frames\":[",
+					first ? "" : ",", layout->name);
 			network_send(client->fd, send_buf);
-		}
-
-		network_send(client->fd, "],\"screens\":[");
-
-		for(q = 0; q <= layout->max_screen; q++){
+	
+			first = 0;
 			for(p = 0; p < layout->nframes; p++){
-				if(layout->frames[p].screen[2] == q){
-					snprintf(send_buf, sizeof(send_buf), "%s{\"id\":%zu,\"width\":%zu,\"height\":%zu}",
-							q ? "," : "", layout->frames[p].screen[2],
-							layout->frames[p].screen[0], layout->frames[p].screen[1]);
-					network_send(client->fd, send_buf);
-					break;
+				snprintf(send_buf, sizeof(send_buf), "%s{\"id\":%zu,\"x\":%zu,\"y\":%zu,\"w\":%zu,\"h\":%zu,\"screen\":%zu}",
+						p ? "," : "", layout->frames[p].id,
+						layout->frames[p].bbox[0], layout->frames[p].bbox[1],
+						layout->frames[p].bbox[2], layout->frames[p].bbox[3],
+						layout->frames[p].screen[2]);
+				network_send(client->fd, send_buf);
+			}
+	
+			network_send(client->fd, "],\"screens\":[");
+	
+			for(q = 0; q <= layout->max_screen; q++){
+				for(p = 0; p < layout->nframes; p++){
+					if(layout->frames[p].screen[2] == q){
+						snprintf(send_buf, sizeof(send_buf), "%s{\"id\":%zu,\"width\":%zu,\"height\":%zu}",
+								q ? "," : "", layout->frames[p].screen[2],
+								layout->frames[p].screen[0], layout->frames[p].screen[1]);
+						network_send(client->fd, send_buf);
+						break;
+					}
 				}
 			}
-		}
 		
+			network_send(client->fd, "]}");
+		}
 		network_send(client->fd, "]}");
 	}
 	network_send(client->fd, "]");
@@ -323,20 +342,33 @@ static int api_send_layouts(http_client_t* client){
 static int api_send_status(http_client_t* client){
 	int rv = 0, first = 1;
 	char send_buf[RECV_CHUNK];
-	size_t u, commands = command_count();
+	size_t u, n = command_count();
 	command_t* cmd = NULL;
+	display_t* display = NULL;
+	layout_t* layout = NULL;
 
-	//TODO redesign API
-	snprintf(send_buf, sizeof(send_buf),"{\"layouts\":%zu,\"commands\":%zu,\"layout\":\"%s\",\"running\":[",
-			layout_count(), command_count(), x11_current_layout(NULL)->name);
+	snprintf(send_buf, sizeof(send_buf), "{\"layouts\":%zu,\"commands\":%zu,\"layout\":[",
+			layout_count(), command_count());
 	rv |= network_send(client->fd, send_buf);
 
-	for(u = 0; u < commands; u++){
+	n = x11_count();
+	for(u = 0; u < n; u++){
+		display = x11_get(u);
+		//FIXME this might return NULL
+		layout = x11_current_layout(display);
+
+		snprintf(send_buf, sizeof(send_buf), "%s{\"display\":\"%s\",\"layout\":\"%s\"}",
+				u ? "," : "", display->name, layout->name);
+		rv |= network_send(client->fd, send_buf);
+	}
+
+	rv |= network_send(client->fd, "],\"running\":[");
+	for(u = 0; u < n; u++){
 		cmd = command_get(u);
 		if(cmd->state != stopped){
 			snprintf(send_buf, sizeof(send_buf), "%s\"%s\"",
 					first ? "" : ",", cmd->name);
-			network_send(client->fd, send_buf);
+			rv |= network_send(client->fd, send_buf);
 			first = 0;
 		}
 	}
@@ -380,16 +412,29 @@ static int api_handle_body(http_client_t* client){
 		}
 	}
 	else if(!strncmp(client->endpoint, "/layout/", 8)){
-		layout_t* layout = layout_find(client->endpoint + 8);
-		if(!layout){
-			api_send_header(client, "400 No such layout", false);
-		}
-		else if(x11_activate_layout(layout)){
-			api_send_header(client, "500 Failed to activate", false);
+		if(!strchr(client->endpoint + 8, '/')){
+			fprintf(stderr, "Missing display in layout request\n");
+			api_send_header(client, "500 Missing display", false);
 		}
 		else{
-			api_send_header(client, "200 OK", true);
-			network_send(client->fd, "{}");
+			*strchr(client->endpoint, '/') = 0;
+
+			display_t* display = x11_find(client->endpoint + 8);
+			layout_t* layout = layout_find(display, client->endpoint + strlen(client->endpoint) + 1);
+
+			if(!display){
+				api_send_header(client, "400 No such display", false);
+			}
+			else if(!layout){
+				api_send_header(client, "400 No such layout", false);
+			}
+			else if(x11_activate_layout(layout)){
+				api_send_header(client, "500 Failed to activate", false);
+			}
+			else{
+				api_send_header(client, "200 OK", true);
+				network_send(client->fd, "{}");
+			}
 		}
 	}
 	else if(!strncmp(client->endpoint, "/command/", 9)){
