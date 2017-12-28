@@ -369,7 +369,19 @@ int list_layouts(Config* config) {
 int stop_command(Config* config, char* name) {
 
 	printf("stop command %s\n", name);
-	return 0;
+
+	char* url = get_url(config, "stop/%s", name);
+	if (!url) {
+		fprintf(stderr, "Cannot build url.\n");
+		return 1;
+	}
+
+	struct netdata data = {};
+	int status = request(url, NULL, &data);
+
+	free(data.data);
+	free(url);
+	return status;
 }
 
 int run_command(Config* config, char* name, int argc, char** args) {
@@ -468,7 +480,9 @@ int handle_command(Config* config, int cmdc, char** cmds) {
 			fprintf(stderr, "Missing command name.\n");
 			return EXIT_MISSING_CMD_NAME;
 		}
-		printf("stop command\n");
+		if (stop_command(config, cmds[1])) {
+			return EXIT_REQUEST_ERROR;
+		}
 	} else if (!strcmp("state", cmds[0])) {
 		return state(config);
 	} else {
