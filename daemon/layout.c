@@ -175,7 +175,7 @@ int layout_new(char* name){
 	int rv = 0;
 	size_t u;
 	display_t* display = NULL;
-	char* display_name = NULL;
+	char* display_name = "-none-";
 
 	if(!strchr(name, ':')){
 		fprintf(stderr, "Layout does not define display, using first\n");
@@ -190,7 +190,7 @@ int layout_new(char* name){
 	}
 
 	if(!display){
-		fprintf(stderr, "Layout %s defined on nonexistent display\n", name);
+		fprintf(stderr, "Layout %s defined on unconfigured display %s\n", name, display_name);
 		return 1;
 	}
 
