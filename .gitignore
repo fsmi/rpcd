@@ -3,4 +3,4 @@
 *.gcda
 *.gcno
 daemon/rpcd
-daemon/rpcd-cli
+cli/rpcd-cli
