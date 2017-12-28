@@ -168,6 +168,108 @@ int parse_state(Config* config, struct netdata* data) {
 	return 0;
 }
 
+int parse_frames(ejson_struct* root) {
+	ejson_struct* elem;
+
+	elem = ejson_find_key(root, "frames", false);
+	if (!elem) {
+		return 1;
+	}
+
+	elem = elem->child;
+
+	printf("Available frames:\n");
+
+	while (elem) {
+		int id = -1;
+		int x = -1;
+		int y = -1;
+		int w = -1;
+		int h = -1;
+		int screen = -1;
+
+		ejson_get_int_from_key(elem->child, "id", false, &id);
+		ejson_get_int_from_key(elem->child, "x", false, &x);
+		ejson_get_int_from_key(elem->child, "y", false, &y);
+		ejson_get_int_from_key(elem->child, "w", false, &w);
+		ejson_get_int_from_key(elem->child, "h", false, &h);
+		ejson_get_int_from_key(elem->child, "screen", false, &screen);
+
+		printf("frame %d (%d,%d) %dx%d screen: %d\n", id, x, y, w, h, screen);
+
+		elem = elem->next;
+	}
+
+	return 0;
+}
+
+int parse_screens(ejson_struct* root) {
+	ejson_struct* elem;
+
+	elem = ejson_find_key(root, "screens", false);
+	if (!elem) {
+		return 1;
+	}
+
+	elem = elem->child;
+
+	printf("Available screens:\n");
+
+	while (elem) {
+		int id = -1;
+		int w = -1;
+		int h = -1;
+
+		ejson_get_int_from_key(elem->child, "id", false, &id);
+		ejson_get_int_from_key(elem->child, "width", false, &w);
+		ejson_get_int_from_key(elem->child, "height", false, &h);
+
+		printf("screen %d (%dx%d)\n", id, w, h);
+
+		elem = elem->next;
+	}
+
+	return 0;
+}
+
+int parse_layouts(Config* config, struct netdata* data) {
+
+	ejson_struct* root = NULL;
+
+	if (ejson_parse_warnings(&root, data->data, data->len, true, stderr) != EJSON_OK) {
+		return 1;
+	}
+
+	if (root->type != EJSON_ARRAY) {
+		fprintf(stderr, "Root element must be an array.\n");
+		return 1;
+	}
+
+	ejson_struct* next = root->child;
+
+	char* name;
+	while (next) {
+		if (ejson_get_string_from_key(next->child, "name", false, &name) != EJSON_OK) {
+			fprintf(stderr, "Name not found.\n");
+			return 1;
+		}
+
+		printf("------ name: %s ------\n\n", name);
+
+		parse_frames(next->child);
+		printf("\n");
+		parse_screens(next->child);
+
+		printf("\n");
+
+		next = next->next;
+	}
+
+	ejson_cleanup(root);
+
+	return 0;
+}
+
 int parse_commands(Config* config, struct netdata* data) {
 	ejson_struct* ejson = NULL;
 	if (ejson_parse_warnings(&ejson, data->data, data->len, true, stderr) != EJSON_OK) {
@@ -361,14 +463,27 @@ int state(Config* config) {
 }
 
 int list_layouts(Config* config) {
+	char* url = get_url(config, "layouts");
 
-	printf("list layouts...\n");
-	return 0;
+	if (!url) {
+		fprintf(stderr, "Cannot build url.\n");
+		return 1;
+	}
+
+	struct netdata data = {};
+	int status = request(url, NULL, &data);
+
+
+	if (!status) {
+		status = parse_layouts(config, &data);
+	}
+
+	free(data.data);
+	free(url);
+	return status;
 }
 
 int stop_command(Config* config, char* name) {
-
-	printf("stop command %s\n", name);
 
 	char* url = get_url(config, "stop/%s", name);
 	if (!url) {
@@ -385,7 +500,6 @@ int stop_command(Config* config, char* name) {
 }
 
 int run_command(Config* config, char* name, int argc, char** args) {
-	printf("run command %s\n", name);
 	const char* json_format = "{\"fullscreen\":%d,\"arguments\":{%s},\"frame\":%d}";
 	char* keys[argc];
 	char* values[argc];
@@ -446,7 +560,20 @@ int run_command(Config* config, char* name, int argc, char** args) {
 
 int apply_layout(Config* config, char* name) {
 	printf("apply layout %s\n", name);
-	return 0;
+
+	char* url = get_url(config, "layout/%s", name);
+
+	if (!url) {
+		fprintf(stderr, "Cannot build url.\n");
+		return 1;
+	}
+
+	struct netdata data = {};
+	int status = request(url, NULL, &data);
+
+	free(data.data);
+	free(url);
+	return status;
 }
 
 int handle_command(Config* config, int cmdc, char** cmds) {
