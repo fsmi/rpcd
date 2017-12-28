@@ -12,7 +12,9 @@ enum ejson_errors {
 	/** The given json is not valid json. */
 	EJSON_INVALID_JSON = 1,
 	/** You try to access a value with the wrong type. */
-	EJSON_WRONG_TYPE = 2
+	EJSON_WRONG_TYPE = 2,
+	/** Cannot find key. */
+	EJSON_KEY_NOT_FOUND = 3
 };
 
 /**
@@ -99,6 +101,8 @@ ejson_struct* ejson_find_key(ejson_struct* ejson, char* key, bool childs);
  */
 enum ejson_errors ejson_get_int(ejson_struct* ejson, int* i);
 
+enum ejson_errors ejson_get_int_from_key(ejson_struct* ejson, char* key, bool childs, int* i);
+
 /**
  * Gets the value as int from given struct.
  * @param ejson_struct* ejson json struct
@@ -106,6 +110,7 @@ enum ejson_errors ejson_get_int(ejson_struct* ejson, int* i);
  * @return enum ejson_errors returns EJSON_WRONG_TYPE if there is an error.
  */
 enum ejson_errors ejson_get_long(ejson_struct* ejson, long* l);
+enum ejson_errors ejson_get_long_from_key(ejson_struct* ejson, char* key, bool childs, long* l);
 
 /**
  * Gets the value as int from given struct.
@@ -114,6 +119,7 @@ enum ejson_errors ejson_get_long(ejson_struct* ejson, long* l);
  * @return enum ejson_errors returns EJSON_WRONG_TYPE if there is an error.
  */
 enum ejson_errors ejson_get_double(ejson_struct* ejson, double* i);
+enum ejson_errors ejson_get_double_from_key(ejson_struct* ejson, char* key, bool childs, double* i);
 
 
 /**
@@ -123,6 +129,7 @@ enum ejson_errors ejson_get_double(ejson_struct* ejson, double* i);
  * @return enum ejson_errors returns EJSON_WRONG_TYPE if there is an error.
  */
 enum ejson_errors ejson_get_string(ejson_struct* ejson, char** s);
+enum ejson_errors ejson_get_string_from_key(ejson_struct* ejson, char* key, bool childs, char** s);
 
 /**
  * Gets the value as boolean from the given struct.
@@ -131,6 +138,7 @@ enum ejson_errors ejson_get_string(ejson_struct* ejson, char** s);
  * @return enum ejson_errors returns EJSON_WRONG_TYPE if there is an error.
  */
 enum ejson_errors ejson_get_boolean(ejson_struct* ejson, bool* b);
+enum ejson_errors ejson_get_boolean_from_key(ejson_struct* ejson, char* key, bool childs, bool* b);
 
 /**
  * Parses an json string into the given structure pointer.

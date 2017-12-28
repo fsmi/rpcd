@@ -1,4 +1,6 @@
 *.swp
 *.o
+*.gcda
+*.gcno
 daemon/rpcd
 daemon/rpcd-cli

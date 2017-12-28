@@ -1,4 +1,4 @@
-.PHONY: clean install
+.PHONY: clean install debug
 
 DESTDIR=/
 INSTALL_DIR=usr/local/bin

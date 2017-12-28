@@ -36,7 +36,12 @@ int curl_perform(CURL* curl) {
 
 	/* Check for errors */
 	if (res != CURLE_OK) {
-		fprintf(stderr, "curl_easy_perform() failed: %s\n",
+
+		long status;
+		curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
+
+		fprintf(stderr, "curl_easy_perform() failed: %ld - %s\n",
+		status,
 		curl_easy_strerror(res));
 		return 1;
 	}
@@ -79,7 +84,6 @@ int request(const char* url, char* post_data, struct netdata* data) {
 		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data);
 	}
 
-	fprintf(stderr, "Perform...\n");
 	int status = curl_perform(curl);
 
 	curl_easy_cleanup(curl);

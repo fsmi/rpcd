@@ -98,23 +98,74 @@ char* get_url(Config* config, char* format, ...) {
 
 	int url_len = snprintf(NULL, 0, url_format, config->host, config->port);
 	int arg_len = vsnprintf(NULL, 0, format, ap);
+	va_end(ap);
 
 	if (url_len <= 0 || arg_len <= 0) {
-		va_end(ap);
 		return NULL;
 	}
 
 	char* url = calloc(url_len + arg_len + 1, sizeof(char));
 
 	if (!url) {
-		va_end(ap);
 		return NULL;
 	}
 
 	sprintf(url, "http://%s:%d/", config->host, config->port);
+	va_start(ap, format);
 	vsprintf(url + url_len, format, ap);
 	va_end(ap);
 	return url;
+}
+
+int parse_state(Config* config, struct netdata* data) {
+
+	ejson_struct* root = NULL;
+	printf("data(%ld/%ld): %s\n", data->len, strlen(data->data), data->data);
+
+	if (ejson_parse_warnings(&root, data->data, data->len, true, stderr) != EJSON_OK) {
+		return 1;
+	}
+
+	if (root->type != EJSON_OBJECT) {
+		fprintf(stderr, "Root is not an object.\n");
+		return 1;
+	}
+
+	char* name;
+	if (ejson_get_string_from_key(root->child, "layout", false, &name) != EJSON_OK) {
+		fprintf(stderr, "Cannot get name of running layout.\n");
+		return 1;
+	}
+	printf("Active Layout: %s\n", name);
+
+	ejson_struct* elem;
+
+	elem = ejson_find_key(root->child, "running", false);
+	if (!elem) {
+		fprintf(stderr, "Cannot find running commands.\n");
+		return 1;
+	}
+	ejson_struct* next = elem->child;
+	char* cmd;
+
+	printf("running:\n");
+	while (next) {
+		if (ejson_get_string(next, &cmd) != EJSON_OK) {
+			fprintf(stderr, "Command type is wrong.\n");
+			return 1;
+		}
+
+		printf("%s", cmd);
+		next = next->next;
+		if (next) {
+			printf(",\n");
+		}
+	}
+	printf("\n");
+
+	ejson_cleanup(root);
+
+	return 0;
 }
 
 int parse_commands(Config* config, struct netdata* data) {
@@ -281,15 +332,37 @@ int list_commands(Config* config) {
 	return status;
 }
 
+int state(Config* config) {
+	struct netdata data = {0};
+
+	char* url = get_url(config, "status");
+
+	if (!url) {
+		fprintf(stderr, "Cannot allocate memory for url.\n");
+		return 1;
+	}
+
+	printf("url: %s\n", url);
+
+	int status = request(url, NULL, &data);
+	free(url);
+	if (!status) {
+
+			printf("%s\n", data.data);
+		if (config->json) {
+			printf("%s\n", data.data);
+		} else {
+			status = parse_state(config, &data);
+		}
+	}
+
+	free(data.data);
+	return status;
+}
+
 int list_layouts(Config* config) {
 
 	printf("list layouts...\n");
-	return 0;
-}
-
-int state(Config* config) {
-
-	printf("show state...\n");
 	return 0;
 }
 
@@ -301,9 +374,13 @@ int stop_command(Config* config, char* name) {
 
 int run_command(Config* config, char* name, int argc, char** args) {
 	printf("run command %s\n", name);
-
+	const char* json_format = "{\"fullscreen\":%d,\"arguments\":{%s},\"frame\":%d}";
 	char* keys[argc];
 	char* values[argc];
+	char* arg_json = strdup("");
+	char* format;
+	int length = 0;
+	int oldlength = 0;
 
 	int i;
 	for (i = 0; i < argc; i++) {
@@ -313,11 +390,46 @@ int run_command(Config* config, char* name, int argc, char** args) {
 			fprintf(stderr, "Command argument has no key: %s\n", keys[i]);
 			return EXIT_CMD_ARGUMENT_MISSING_KEY;
 		}
-
 		fprintf(stderr, "argument found: %s=%s\n", keys[i], values[i]);
+
+		if (i == 0) {
+			format = "\"%s\":\"%s\"";
+		} else {
+			format = ",\"%s\":\"%s\"";
+		}
+		length = snprintf(NULL, 0, format , keys[i], values[i]);
+		arg_json = realloc(arg_json, oldlength + length + 1 * sizeof(char));
+		if (!arg_json) {
+			fprintf(stderr, "Cannot allocate memory.\n");
+			return 1;
+		}
+		sprintf(arg_json + oldlength, format, keys[i], values[i]);
+		oldlength += length;
 	}
 
-	return 0;
+	length = snprintf(NULL, 0, json_format, config->fullscreen, arg_json, config->frame);
+	char* post_data = calloc(length + 1, sizeof(char));
+	if (!post_data) {
+		fprintf(stderr, "Cannot allocate memory.\n");
+		return 1;
+	}
+	sprintf(post_data, json_format, config->fullscreen, arg_json, config->frame);
+
+	char* url = get_url(config, "command/%s", name);
+	if (!url) {
+		fprintf(stderr, "Cannot build url.\n");
+		return 1;
+	}
+
+	printf("url: %s\ndata:%s\n", url, post_data);
+
+	struct netdata data = {};
+	int status = request(url, post_data, &data);
+
+	free(data.data);
+	free(url);
+	free(post_data);
+	return status;
 }
 
 int apply_layout(Config* config, char* name) {
@@ -395,5 +507,7 @@ int main(int argc, char** argv) {
 
 	curl_init_global();
 
-	return handle_command(&config, outputc, output);
+	int status = handle_command(&config, outputc, output);
+	curl_global_cleanup();
+	return status;
 }
