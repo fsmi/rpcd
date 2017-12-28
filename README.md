@@ -45,14 +45,16 @@ daemon executable is the configuration file to be used.
 The daemon configuration file closely mirrors the standard `ini` file format. An example
 configuration may be found in [daemon/rpcd.conf](daemon/rpcd.conf).
 Sub-configuration files can be pulled in while parsing with an `include <file>` line.
+Lines starting with a semicolon `;` are treated as comments and ignored. Inline comments
+are not yet supported.
 
-Some section types (`layout` and `command`) describe named elements. This name is provided
+Some section types (`layout`, `command` and `x11`) describe named elements. This name is provided
 in the section header, separated from the keyword by a space.
 
 | Section		| Option	| Default value		| Example value		| Description				| Notes
 |-----------------------|---------------|-----------------------|-----------------------|---------------------------------------|------
 |[web]			| bind		| none			| `10.23.0.1 8080`	| HTTP API host and port		|
-|[x11]			| display	| `:0`			| `:0.0`		| X11 display identifier to use		|
+|[x11 `name`]		| display	| `:0`			| `:0.0`		| X11 display identifier to use		|
 |			| deflayout	| none			| `layout_name`		| Layout to apply on reset		|
 |			| repatriate	| none			| `yes`			| Store current window-frame mapping	|
 |[layout `name`]	| file		| none			| `path/to/file.sfdump` | Path to a ratpoison `sfdump`		| required
