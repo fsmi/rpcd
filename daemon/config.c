@@ -101,7 +101,7 @@ int config_parse(char* cfg_file){
 		else{
 			argument = strchr(line, '=');
 			if(!argument){
-				fprintf(stderr, "%s:%zu Not a assignment\n", cfg_file, line_no);
+				fprintf(stderr, "%s:%zu Not an assignment: %s\n", cfg_file, line_no, line);
 				goto bail;
 			}
 
