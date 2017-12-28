@@ -2,7 +2,7 @@
 CFLAGS ?= -g -Wall
 LDLIBS = -lX11
 
-OBJECTS = $(patsubst %.c,%.o,$(wildcard *.c))
+OBJECTS = $(patsubst %.c,%.o,$(wildcard *.c ../libs/easy_json.c))
 
 rpcd: $(OBJECTS)
 

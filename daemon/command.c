@@ -9,7 +9,7 @@
 
 #include "x11.h"
 #include "command.h"
-#include "easy_json.h"
+#include "../libs/easy_json.h"
 
 static size_t ncommands = 0;
 static command_t* commands = NULL;
