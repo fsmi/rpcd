@@ -26,11 +26,11 @@ layout_t* layout_get(size_t index){
 	return NULL;
 }
 
-layout_t* layout_find(display_t* display, char* name){
+layout_t* layout_find(size_t display_id, char* name){
 	size_t u;
 
 	for(u = 0; u < nlayouts; u++){
-		if(layouts[u].display == display && !strcmp(layouts[u].name, name)){
+		if(layouts[u].display_id == display_id && !strcmp(layouts[u].name, name)){
 			return layouts + u;
 		}
 	}
@@ -148,7 +148,7 @@ bail:
 	return rv;
 }
 
-static int layout_init(layout_t* layout, char* name, display_t* display){
+static int layout_init(layout_t* layout, char* name, size_t display_id){
 	if(name && strlen(name) < 1){
 		fprintf(stderr, "Invalid layout name provided\n");
 		return 1;
@@ -159,7 +159,7 @@ static int layout_init(layout_t* layout, char* name, display_t* display){
 		.max_screen = 0,
 		.nframes = 0,
 		.frames = NULL,
-		.display = display
+		.display_id = display_id
 	};
 	*layout = empty;
 	return 0;
@@ -168,14 +168,14 @@ static int layout_init(layout_t* layout, char* name, display_t* display){
 static void layout_free(layout_t* layout){
 	free(layout->name);
 	free(layout->frames);
-	layout_init(layout, NULL, NULL);
+	layout_init(layout, NULL, 0);
 }
 
 int layout_new(char* name){
 	int rv = 0;
 	size_t u;
-	display_t* display = NULL;
 	char* display_name = "-none-";
+	size_t display_id = 0;
 
 	if(!strchr(name, ':')){
 		fprintf(stderr, "Layout does not define display, using first display available\n");
@@ -186,17 +186,12 @@ int layout_new(char* name){
 		name = strchr(name, ':');
 		*name = 0;
 		name++;
-		display = x11_find(display_name);
-	}
-
-	if(!display){
-		fprintf(stderr, "Layout %s defined on unconfigured display %s\n", name, display_name);
-		return 1;
+		display_id = x11_find_id(display_name);
 	}
 
 	for(u = 0; u < nlayouts; u++){
-		if(!strcmp(layouts[u].name, name) && layouts[u].display == display){
-			fprintf(stderr, "Layout %s already exists on display\n", name);
+		if(!strcmp(layouts[u].name, name) && layouts[u].display_id == display_id){
+			fprintf(stderr, "Layout %s already exists on display %s\n", name, display_name);
 			return 1;
 		}
 	}
@@ -208,7 +203,7 @@ int layout_new(char* name){
 		return 1;
 	}
 
-	rv = layout_init(layouts + nlayouts, name, display);
+	rv = layout_init(layouts + nlayouts, name, display_id);
 	nlayouts++;
 	return rv;
 }
@@ -228,7 +223,7 @@ int layout_config(char* option, char* value){
 	}
 	if(!strcmp(option, "read-display")){
 		if(!strcmp(value, "yes")){
-			if(x11_fetch_layout(last->display, &read_layout)){
+			if(x11_fetch_layout(last->display_id, &read_layout)){
 				return 1;
 			}
 

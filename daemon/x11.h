@@ -24,14 +24,14 @@ typedef struct _x11_display_t {
 
 size_t x11_count();
 display_t* x11_get(size_t index);
-display_t* x11_find(char* name);
+size_t x11_find_id(char* name);
 
 int x11_activate_layout(layout_t* layout);
-int x11_fullscreen(display_t* display);
-int x11_rollback(display_t* display);
-int x11_select_frame(display_t* display, size_t frame_id);
-int x11_fetch_layout(display_t* display, char** layout);
-layout_t* x11_current_layout(display_t* display);
+int x11_fullscreen(size_t display_id);
+int x11_rollback(size_t display_id);
+int x11_select_frame(size_t display_id, size_t frame_id);
+int x11_fetch_layout(size_t display_id, char** layout);
+layout_t* x11_current_layout(size_t display_id);
 
 int x11_new(char* name);
 int x11_loop(fd_set* in, fd_set* out, int* max_fd);

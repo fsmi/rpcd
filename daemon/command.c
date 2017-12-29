@@ -60,7 +60,7 @@ int command_reap(){
 					commands[u].state = stopped;
 					//if restore requested, undo layout change
 					if(commands[u].restore_layout){
-						x11_rollback(commands[u].display);
+						x11_rollback(commands[u].display_id);
 						commands[u].restore_layout = 0;
 					}
 					fprintf(stderr, "Instance of %s stopped\n", commands[u].name);
@@ -195,29 +195,30 @@ static int command_parse_json(command_t* command, command_instance_t* instance, 
 			return 1;
 		}
 
-		command->display = x11_find(display_name);
+		command->display_id = x11_find_id(display_name);
 	}
-	else{
-		command->display = NULL;
+	else if(command->windows){
+		fprintf(stderr, "No display provided for command, using default display\n");
+		command->display_id = 0;
 	}
 
-	if(display_info && frame_info){
+	if(frame_info){
 		int frame_id = -1;
 		if(ejson_get_int(frame_info, &frame_id) != EJSON_OK){
 			fprintf(stderr, "Failed to parse frame parameter\n");
 		}
 		else{
-			x11_select_frame(command->display, frame_id);
+			x11_select_frame(command->display_id, frame_id);
 		}
 	}
 
-	if(display_info && fullscreen_info){
+	if(fullscreen_info){
 		int fullscreen = 0;
 		if(ejson_get_int(fullscreen_info, &fullscreen) != EJSON_OK) {
 			fprintf(stderr, "Failed to parse fullscreen parameter\n");
 		}
 		else if(fullscreen){
-			x11_fullscreen(command->display);
+			x11_fullscreen(command->display_id);
 			instance->restore_layout = 1;
 		}
 	}

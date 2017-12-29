@@ -21,16 +21,17 @@ display_t* x11_get(size_t index){
 	return NULL;
 }
 
-display_t* x11_find(char* name){
+size_t x11_find_id(char* name){
 	size_t u;
 
 	for(u = 0; u < ndisplays; u++){
 		if(!strcmp(displays[u].name, name)){
-			return displays + u;
+			return u;
 		}
 	}
 
-	return NULL;
+	fprintf(stderr, "Failed to find display %s, replacing with default display 0\n", name);
+	return 0;
 }
 
 //See ratpoison:src/communications.c for the original implementation of the ratpoison
@@ -132,11 +133,11 @@ bail:
   	return rv;
 }
 
-static int x11_repatriate(display_t* display){
+static int x11_repatriate(size_t display_id){
 	int rv = 1;
 	size_t frame_id, window;
 	char* layout = NULL, *frame = NULL;
-	if(x11_fetch_layout(display, &layout) || !layout){
+	if(x11_fetch_layout(display_id, &layout) || !layout){
 		fprintf(stderr, "Failed to repatriate windows, could not read layout\n");
 		return 1;
 	}
@@ -150,7 +151,7 @@ static int x11_repatriate(display_t* display){
 		frame_id = strtoul(strstr(frame, ":number") + 7, NULL, 10);
 		window = strtoul(strstr(frame, ":window") + 7, NULL, 10);
 
-		if(control_repatriate(display, frame_id, window)){
+		if(control_repatriate(display_id, frame_id, window)){
 			fprintf(stderr, "Failed to repatriate frame %zu\n", frame_id);
 			goto bail;
 		}
@@ -184,17 +185,18 @@ static int x11_display_init(display_t* display, char* name){
 	return display->name ? 0 : 1;
 }
 
-int x11_fetch_layout(display_t* display, char** layout){
-	return x11_run_command(display, "sfdump", layout);
+int x11_fetch_layout(size_t display_id, char** layout){
+	return x11_run_command(x11_get(display_id), "sfdump", layout);
 }
 
 int x11_activate_layout(layout_t* layout){
 	size_t left = 0, frame = 0, off = 10;
+	display_t* display = x11_get(layout->display_id);
 	char* layout_string = strdup("sfrestore ");
 	ssize_t required = 0;
 	int rv;
 
-	if(!layout_string){
+	if(!layout_string || !display){
 		fprintf(stderr, "Failed to allocate memory\n");
 		return 1;
 	}
@@ -205,11 +207,11 @@ int x11_activate_layout(layout_t* layout){
 				layout->frames[frame].bbox[0], layout->frames[frame].bbox[1],
 				layout->frames[frame].bbox[2], layout->frames[frame].bbox[3],
 				layout->frames[frame].screen[0], layout->frames[frame].screen[1],
-				control_get_window(layout->display, layout->frames[frame].id),
+				control_get_window(layout->display_id, layout->frames[frame].id),
 				layout->frames[frame].screen[2]);
 
 		if(required < 0){
-			fprintf(stderr, "Failed to design layout string for %s on %s\n", layout->name, layout->display->name);
+			fprintf(stderr, "Failed to design layout string for %s on %s\n", layout->name, display->name);
 			rv = 1;
 			goto bail;
 		}
@@ -231,28 +233,35 @@ int x11_activate_layout(layout_t* layout){
 		left -= required;
 	}
 
-	rv = x11_run_command(layout->display, layout_string, NULL);
-	layout->display->current_layout = layout;
+	rv = x11_run_command(display, layout_string, NULL);
+	display->current_layout = layout;
 bail:
 	free(layout_string);
 	return rv;
 }
 
-int x11_fullscreen(display_t* display){
-	return x11_run_command(display, "only", NULL);
+int x11_fullscreen(size_t display_id){
+	return x11_run_command(x11_get(display_id), "only", NULL);
 }
 
-int x11_rollback(display_t* display){
-	return x11_run_command(display, "undo", NULL);
+int x11_rollback(size_t display_id){
+	return x11_run_command(x11_get(display_id), "undo", NULL);
 }
 
-int x11_select_frame(display_t* display, size_t frame_id){
+int x11_select_frame(size_t display_id, size_t frame_id){
 	char command_buffer[DATA_CHUNK];
 	snprintf(command_buffer, sizeof(command_buffer), "fselect %zu", frame_id);
-	return x11_run_command(display, command_buffer, NULL);
+	return x11_run_command(x11_get(display_id), command_buffer, NULL);
 }
 
-layout_t* x11_current_layout(display_t* display){
+layout_t* x11_current_layout(size_t display_id){
+	display_t* display = x11_get(display_id);
+
+	if(!display){
+		fprintf(stderr, "Invalid display ID passed to x11_current_layout\n");
+		return NULL;
+	}
+
 	return display->current_layout ? display->current_layout : display->default_layout;
 }
 
@@ -262,7 +271,7 @@ int x11_loop(fd_set* in, fd_set* out, int* max_fd){
 	if(!init_done){
 		for(u = 0; u < ndisplays; u++){
 			if(displays[u].default_layout_name){
-				displays[u].default_layout = layout_find(displays + u, displays[u].default_layout_name);
+				displays[u].default_layout = layout_find(u, displays[u].default_layout_name);
 				if(!displays[u].default_layout){
 					fprintf(stderr, "Failed to find default layout %s for %s\n", displays[u].default_layout_name, displays[u].name);
 					return 1;
@@ -352,7 +361,7 @@ int x11_ok(){
 	}
 
 	if(last->repatriate){
-		x11_repatriate(last);
+		x11_repatriate(ndisplays - 1);
 		last->repatriate = 0;
 	}
 	return 0;

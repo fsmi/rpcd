@@ -296,7 +296,7 @@ static int api_send_layouts(http_client_t* client){
 
 		for(u = 0; u < layouts; u++){
 			layout = layout_get(u);
-			if(layout->display != display){
+			if(layout->display_id != c){
 				continue;
 			}
 	
@@ -355,7 +355,7 @@ static int api_send_status(http_client_t* client){
 	for(u = 0; u < n; u++){
 		display = x11_get(u);
 		//FIXME this might return NULL
-		layout = x11_current_layout(display);
+		layout = x11_current_layout(u);
 
 		snprintf(send_buf, sizeof(send_buf), "%s{\"display\":\"%s\",\"layout\":\"%s\"}",
 				u ? "," : "", display->name, layout->name);
@@ -418,14 +418,9 @@ static int api_handle_body(http_client_t* client){
 		}
 		else{
 			*strchr(client->endpoint, '/') = 0;
+			layout_t* layout = layout_find(x11_find_id(client->endpoint + 8), client->endpoint + strlen(client->endpoint) + 1);
 
-			display_t* display = x11_find(client->endpoint + 8);
-			layout_t* layout = layout_find(display, client->endpoint + strlen(client->endpoint) + 1);
-
-			if(!display){
-				api_send_header(client, "400 No such display", false);
-			}
-			else if(!layout){
+			if(!layout){
 				api_send_header(client, "400 No such layout", false);
 			}
 			else if(x11_activate_layout(layout)){
