@@ -1,5 +1,4 @@
 #include <X11/Xlib.h>
-#include "x11.h"
 
 typedef enum /*_window_mode*/ {
 	ondemand = 0, /*start and stop at any time*/
@@ -10,6 +9,7 @@ typedef enum /*_window_mode*/ {
 
 typedef struct /*_managed_window_t*/ {
 	ssize_t frame_id;
+	size_t display_id;
 
 	Window window;
 	pid_t pid;
@@ -27,8 +27,8 @@ typedef struct /*_automation_variable_t*/ {
 
 //TODO conditional operators
 
-Window control_get_window(display_t* display, size_t frame_id);
-int control_repatriate(display_t* display, size_t frame_id, Window w);
+Window control_get_window(size_t display_id, size_t frame_id);
+int control_repatriate(size_t display_id, size_t frame_id, Window w);
 //int control_handle_event(XEvent ev);
 
 int control_window_new(char* name);

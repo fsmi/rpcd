@@ -59,10 +59,11 @@ static int control_window_create(char* name){
 }
 
 //FIXME this currently forces the automation to remove all previous frame maps
-Window control_get_window(display_t* display, size_t frame_id){
+Window control_get_window(size_t display_id, size_t frame_id){
 	size_t u;
 	for(u = 0; u < nwindows; u++){
-		if(windows[u].frame_id == frame_id){
+		if(windows[u].display_id == display_id
+				&& windows[u].frame_id == frame_id){
 			return windows[u].window;
 		}
 	}
@@ -71,10 +72,11 @@ Window control_get_window(display_t* display, size_t frame_id){
 	return 0;
 }
 
-int control_repatriate(display_t* display, size_t frame_id, Window w){
+int control_repatriate(size_t display_id, size_t frame_id, Window w){
 	if(!control_window_create(NULL)){
 		windows[nwindows - 1].window = w;
 		windows[nwindows - 1].frame_id = frame_id;
+		windows[nwindows - 1].display_id = display_id;
 		windows[nwindows - 1].mode = irreplaceable;
 
 		return 0;

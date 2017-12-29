@@ -1,8 +1,5 @@
 #ifndef RPCD_LAYOUT_H
 #define RPCD_LAYOUT_H
-struct _x11_display_t;
-
-#define display_t struct _x11_display_t
 
 typedef struct /*_ratpoison_layout_frame*/ {
 	size_t id;
@@ -15,18 +12,16 @@ typedef struct /*_ratpoison_layout_t*/ {
 	size_t nframes;
 	size_t max_screen;
 	frame_t* frames;
-	display_t* display;
+	size_t display_id;
 } layout_t;
 
 size_t layout_count();
 layout_t* layout_get(size_t index);
-layout_t* layout_find(display_t* display, char* name);
+layout_t* layout_find(size_t display_id, char* name);
 
 int layout_new(char* name);
 int layout_config(char* option, char* value);
 int layout_ok();
 void layout_cleanup();
-
-#undef display_t
 
 #endif
