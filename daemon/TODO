@@ -1,12 +1,10 @@
 Commands are not searched in PATH
 Run automation on startup / after reset
 Default automation: load default layout
-Rewrite OK functions
 Temporarily store started commands into frame-store
 Reset: kill all jobs
 
-command_run
-	set display env (if window)
+command
 	mark display busy
 
 control
