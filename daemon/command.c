@@ -67,7 +67,7 @@ int command_reap(){
 				}
 			}
 		}
-	} 
+	}
 	while(status);
 	return 0;
 }
@@ -75,6 +75,7 @@ int command_reap(){
 static void command_child(command_t* command, command_instance_t* args){
 	char* token = NULL, *child = NULL, **argv = NULL, *replacement = NULL;
 	size_t nargs = 1, u, p;
+	display_t* display = NULL;
 
 	argv = calloc(2, sizeof(char*));
 	if(!argv){
@@ -121,6 +122,17 @@ static void command_child(command_t* command, command_instance_t* args){
 			}
 		}
 		nargs++;
+	}
+
+	//update the environment with proper DISPLAY
+	if(command->windows){
+		display = x11_get(command->display_id);
+		if(setenv("DISPLAY", display->identifier, 1)){
+			fprintf(stderr, "Failed to update the environment: %s\n", strerror(errno));
+		}
+	}
+	else if(unsetenv("DISPLAY")){
+		fprintf(stderr, "Failed to update the environment: %s\n", strerror(errno));
 	}
 
 	//make the child a session leader to be able to kill the entire group
@@ -188,38 +200,40 @@ static int command_parse_json(command_t* command, command_instance_t* instance, 
 	size_t u;
 	argument_t* cmd_arg;
 
-	if(display_info){
-		char* display_name = NULL;
-		if(ejson_get_string(display_info, &display_name) != EJSON_OK){
-			fprintf(stderr, "Failed to parse display parameter\n");
-			return 1;
-		}
+	if(command->windows){
+		if(display_info){
+			char* display_name = NULL;
+			if(ejson_get_string(display_info, &display_name) != EJSON_OK){
+				fprintf(stderr, "Failed to parse display parameter\n");
+				return 1;
+			}
 
-		command->display_id = x11_find_id(display_name);
-	}
-	else if(command->windows){
-		fprintf(stderr, "No display provided for command, using default display\n");
-		command->display_id = 0;
-	}
-
-	if(frame_info){
-		int frame_id = -1;
-		if(ejson_get_int(frame_info, &frame_id) != EJSON_OK){
-			fprintf(stderr, "Failed to parse frame parameter\n");
+			command->display_id = x11_find_id(display_name);
 		}
 		else{
-			x11_select_frame(command->display_id, frame_id);
+			fprintf(stderr, "No display provided for command, using default display\n");
+			command->display_id = 0;
 		}
-	}
 
-	if(fullscreen_info){
-		int fullscreen = 0;
-		if(ejson_get_int(fullscreen_info, &fullscreen) != EJSON_OK) {
-			fprintf(stderr, "Failed to parse fullscreen parameter\n");
+		if(frame_info){
+			int frame_id = -1;
+			if(ejson_get_int(frame_info, &frame_id) != EJSON_OK){
+				fprintf(stderr, "Failed to parse frame parameter\n");
+			}
+			else{
+				x11_select_frame(command->display_id, frame_id);
+			}
 		}
-		else if(fullscreen){
-			x11_fullscreen(command->display_id);
-			instance->restore_layout = 1;
+
+		if(fullscreen_info){
+			int fullscreen = 0;
+			if(ejson_get_int(fullscreen_info, &fullscreen) != EJSON_OK) {
+				fprintf(stderr, "Failed to parse fullscreen parameter\n");
+			}
+			else if(fullscreen){
+				x11_fullscreen(command->display_id);
+				instance->restore_layout = 1;
+			}
 		}
 	}
 

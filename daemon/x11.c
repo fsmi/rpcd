@@ -167,6 +167,9 @@ static void x11_display_free(display_t* display){
 	free(display->name);
 	display->name = NULL;
 
+	free(display->identifier);
+	display->identifier = NULL;
+
 	free(display->default_layout_name);
 	display->default_layout_name = NULL;
 
@@ -314,6 +317,11 @@ int x11_new(char* name){
 int x11_config(char* option, char* value){
 	display_t* last = displays + (ndisplays - 1);
 	if(!strcmp(option, "display")){
+		if(last->identifier){
+			fprintf(stderr, "Multiple display connections specified for display %s\n", last->name);
+			return 1;
+		}
+
 		last->display_handle = XOpenDisplay(value);
 		if(!last->display_handle){
 			fprintf(stderr, "Failed to open display %s\n", value);
@@ -322,6 +330,11 @@ int x11_config(char* option, char* value){
 		last->rp_command = XInternAtom(last->display_handle, "RP_COMMAND", True);
 		last->rp_command_request = XInternAtom(last->display_handle, "RP_COMMAND_REQUEST", True);
 		last->rp_command_result = XInternAtom(last->display_handle, "RP_COMMAND_RESULT", True);
+		last->identifier = strdup(value);
+		if(!last->identifier){
+			fprintf(stderr, "Failed to allocate memory\n");
+			return 1;
+		}
 		return 0;
 	}
 	else if(!strcmp(option, "deflayout")){
@@ -351,7 +364,7 @@ int x11_ok(){
 
 	display_t* last = displays + (ndisplays - 1);
 
-	if(!last->display_handle){
+	if(!last->display_handle || !last->identifier){
 		fprintf(stderr, "No display connected for %s\n", last->name);
 		return 1;
 	}

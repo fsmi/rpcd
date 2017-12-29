@@ -12,6 +12,7 @@ typedef struct _x11_display_t {
 	layout_t* current_layout;
 
 	char* name;
+	char* identifier;
 	char* default_layout_name;
 	int repatriate;
 	int busy;
