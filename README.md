@@ -49,7 +49,8 @@ Lines starting with a semicolon `;` are treated as comments and ignored. Inline 
 are not yet supported.
 
 Some section types (`layout`, `command` and `x11`) describe named elements. This name is provided
-in the section header, separated from the keyword by a space.
+in the section header, separated from the keyword by a space. Names are unique for a specific type,
+except for layout names, which are unique per display.
 
 | Section		| Option	| Default value		| Example value		| Description				| Notes
 |-----------------------|---------------|-----------------------|-----------------------|---------------------------------------|------
@@ -61,6 +62,7 @@ in the section header, separated from the keyword by a space.
 |			| read-layout	| none			| `yes`			| Read the layout data from a running `ratpoison`|
 |[command `name`]	| description	| none			| `What does it do`	| Command help/description		|
 |			| command	| none			| `/bin/echo %Var1`	| Command to execute including arguments| required
+|			| windows	| none			| `no`			| Indicates that the command will not open an X window |
 |			| `VariableName`| none			| `string Arg1`		| Command argument variable specification (see below) |
 
 Commands may have any number of user-specifiable arguments, which replace the `%Variable` placeholders in the command specification.
@@ -104,6 +106,24 @@ terminate upon receiving SIGTERM, the next `stop` command will send SIGKILL to t
 The fullscreen checkbox (and the fullscreen parameter to the `start` endpoint) cause rpcd to execute the
 ratpoison command `only` (take window fullscreen on this screen) before running the command, as well as
 executing `undo` at termination, rolling back the last layout change.
+
+### Commands without windows
+
+Indicating that a command creates no X windows (for example, to implement control commands for another running
+command) has the following consequences:
+
+* The command will not have a `DISPLAY` variable in its environment
+* The `frame`, `display` and `fullscreen` parameters are ignored
+	* This implies that there will be no interaction with `ratpoison` at all for the command
+
+### Default display
+
+In a multihead environment (that is, one where `rpcd` manages multiple ratpoison instances on different
+X servers), the specific display a command is to be run on needs to be passed. To stay compatible with single-head
+deployments, this option may be omitted and the first display defined in the configuration is used.
+
+In the same manner, layouts may still be defined with the old configuration syntax (omitting the display a layout
+is defined on). The default display will then be used for the layout.
 
 ## Caveats
 
