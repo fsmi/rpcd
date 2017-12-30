@@ -225,7 +225,6 @@ class Controller {
 
 		layout.frames = layout.frames || [];
 		layout.frames.forEach((frame) => {
-			console.log(`draw frame: ${frame.id} on screen ${frame.screen}`);
 			let ctx = screens[frame.screen];
 			if (ctx) {
 				ctx.fillStyle = '#FFFFFF';
@@ -248,7 +247,6 @@ class Controller {
 	fillFrameBox() {
 		let box = document.querySelector('#cmdFrame');
 		box.innerHTML = '';
-		console.log(this.state.layout);
 		let layout = this.layouts.find((l) => {
 			return l.name === this.state.layout;
 		});
@@ -359,41 +357,49 @@ class Controller {
 		}
 
 		// dummies
-		let lp = this.ajax(`${window.config.api}/layouts`, 'GET');
-		lp.then((layouts) => {
-			this.layouts = layouts;
-			this.fillList(this.layouts,
-				document.querySelector('#layout_items'),
-				'layout',
-				this.layoutChanged.bind(this));
-		},
-		(err) => {
-			this.status(err);
-			this.fillList(this.layouts,
-				document.querySelector('#layout_items'),
-				'layout',
-				this.layoutChanged.bind(this));
+		let lp = new Promise((resolve, reject) => {
+			this.ajax(`${window.config.api}/layouts`, 'GET')
+				.then((layouts) => {
+					this.layouts = layouts;
+					this.fillList(this.layouts,
+						document.querySelector('#layout_items'),
+						'layout',
+						this.layoutChanged.bind(this));
+					resolve(layouts);
+				},
+				(err) => {
+					this.status(err);
+					this.fillList(this.layouts,
+						document.querySelector('#layout_items'),
+						'layout',
+						this.layoutChanged.bind(this));
+					reject(err);
+				});
 		});
-		let cp = this.ajax(`${window.config.api}/commands`, `GET`);
-		cp.then((commands) => {
-			this.commands = commands;
-			this.fillList(this.commands,
-				document.querySelector('#command_items'),
-				'command',
-				this.cmdChanged.bind(this));
-		},
-		(err) => {
-			this.status(err);
-			this.fillList(this.commands,
-				document.querySelector('#command_items'),
-				'command',
-				this.cmdChanged.bind(this));
+		let cp = new Promise((resolve, reject) => {
+			this.ajax(`${window.config.api}/commands`, `GET`)
+				.then((commands) => {
+					this.commands = commands;
+					this.fillList(this.commands,
+						document.querySelector('#command_items'),
+						'command',
+						this.cmdChanged.bind(this));
+					resolve(commands);
+				},
+				(err) => {
+					this.status(err);
+					this.fillList(this.commands,
+						document.querySelector('#command_items'),
+						'command',
+						this.cmdChanged.bind(this));
+					reject(err);
+				});
 		});
 
-		Promise.all(lp, cp).then(() => {
+		Promise.all([lp, cp]).then(() => {
 			this.getStatus();
 			setInterval(this.getStatus.bind(this), 5000);
-		}, () => {
+		}, (err) => {
 			this.getStatus();
 			setInterval(this.getStatus.bind(this), 5000);
 		});
