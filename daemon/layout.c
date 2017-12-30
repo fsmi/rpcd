@@ -179,7 +179,6 @@ int layout_new(char* name){
 
 	if(!strchr(name, ':')){
 		fprintf(stderr, "Layout does not define display, using first display available\n");
-		x11_get(0);
 	}
 	else{
 		display_name = name;

@@ -72,7 +72,6 @@ int config_parse(char* cfg_file){
 				if(x11_new(line + 5)){
 					goto bail;
 				}
-				config_state = conf_layout;
 				config_state = conf_x11;
 			}
 			else if(!strncmp(line, "[layout ", 8)){

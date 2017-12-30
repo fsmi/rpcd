@@ -201,6 +201,7 @@ int x11_activate_layout(layout_t* layout){
 
 	if(!layout_string || !display){
 		fprintf(stderr, "Failed to allocate memory\n");
+		free(layout_string);
 		return 1;
 	}
 
