@@ -26,8 +26,9 @@ int usage(int argc, char** argv, Config* config) {
 			"    state              Return the given state of the server\n"
 			"\nOptions:\n"
 			"    -?, --help         Show this usage.\n"
-			"    -f, --fullscreen   Run command in fullscreen\n"
-			"    -F, --frame        Run in given frame\n"
+			"    -F, --fullscreen   Run command in fullscreen\n"
+			"    -f, --frame        Run in given frame\n"
+			"    -j, --json         Output stuff as json\n"
 			"    -h, --host <host>  Set host.\n"
 			"    -p, --port <port>  Set port.\n"
 			, config->progName, config->progName);
@@ -40,21 +41,17 @@ int set_fullscreen(int argc, char** argv, Config* config) {
 	return 0;
 }
 
+int set_json(int argc, char** argv, Config* config) {
+	config->json = 1;
+	return 0;
+}
+
 int set_host(int argc, char** argv, Config* config) {
 	if (argc < 2) {
 		return -1;
 	}
 
 	config->host = argv[1];
-	return 1;
-}
-
-int set_display(int argc, char** argv, Config* config) {
-	if (argc < 2) {
-		return -1;
-	}
-
-	config->display = argv[1];
 	return 1;
 }
 
@@ -631,9 +628,9 @@ int main(int argc, char** argv) {
 	};
 
 	eargs_addArgument("-?", "--help", usage, 0);
-	eargs_addArgument("-f", "--fullscreen", set_fullscreen, 0);
-	eargs_addArgument("-d", "--display", set_display, 1);
-	eargs_addArgument("-F", "--frame", set_frame, 1);
+	eargs_addArgument("-F", "--fullscreen", set_fullscreen, 0);
+	eargs_addArgument("-f", "--frame", set_frame, 1);
+	eargs_addArgument("-j", "--json", set_json, 0);
 	eargs_addArgument("-h", "--host", set_host, 1);
 	eargs_addArgument("-p", "--port", set_port, 1);
 

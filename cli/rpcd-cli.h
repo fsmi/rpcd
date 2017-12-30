@@ -14,7 +14,6 @@ typedef enum {
 typedef struct {
 	char* progName;
 	char* host;
-	char* display;
 	int json;
 	int port;
 	int fullscreen;
