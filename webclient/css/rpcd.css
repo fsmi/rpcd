@@ -33,10 +33,6 @@ button:hover {
 	cursor: pointer;
 }
 
-section {
-	display: none;
-}
-
 .grid_right {
 	width: 100%;
 	overflow: auto;
@@ -107,7 +103,8 @@ main {
 
 section {
 	display: none;
-	height: 90%;
+	height: 83%;
+	overflow: auto;
 	border: 1px solid #ddd;
 	border-radius: 4px;
 	border-top-left-radius: 0;
@@ -332,6 +329,10 @@ select {
 .stop {
 	background-color: #dd0000;
 	color: white;
+}
+
+#display_selector {
+	width: 50%;
 }
 
 #repo-link{

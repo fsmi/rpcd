@@ -69,18 +69,22 @@ class Controller {
 			});
 	}
 
+	inputRadio(i, prefix, listener) {
+		let input = document.createElement('input');
+		input.value = i;
+		input.type = 'radio';
+		input.name = `${prefix}s`;
+		input.id = `${prefix}_${i}`;
+		input.addEventListener('change', listener);
+		return input;
+	}
+
 	fillList(list, elem, prefix, changeListener) {
+		elem.innerHTML = '';
 		list.forEach((item, i) => {
 			let li = document.createElement('li');
 			li.id = `li_${prefix}_${i}`;
-			let input = document.createElement('input');
-			input.value = i;
-			input.type = 'radio';
-			input.name = `${prefix}s`;
-			input.id = `${prefix}_${i}`;
-
-			input.addEventListener('change', changeListener);
-
+			let input = this.inputRadio(i, prefix, changeListener)
 			li.appendChild(input);
 
 			let label = document.createElement('label');
@@ -130,8 +134,13 @@ class Controller {
 	applyLayout() {
 		let layout = document.querySelector('input[name="layouts"]:checked').value;
 		this.status(`Applied layout ${this.layouts[layout].name}`);
+		let display = document.querySelector('#display_selector').value;
 
-		this.ajax(`${window.config.api}/layout/${this.layouts[layout].name}`, 'GET').then(
+		let d = this.layouts.find((d) => {
+			return d.display === display;
+		});
+
+		this.ajax(`${window.config.api}/layout/${display}/${d.layouts[layout].name}`, 'GET').then(
 			() => {
 				this.status('Layout loaded successfully');
 				this.state.layout = layout;
@@ -183,9 +192,11 @@ class Controller {
 		let options = {
 			arguments: args
 		};
+		let values = document.querySelector('#cmdFrame').value.split('/');
 		if (command.windows && command.windows > 0) {
 			options.fullscreen = document.querySelector('#fullscreen').checked ? 1 : 0;
-			options.frame = parseInt(document.querySelector('#cmdFrame').value, 10);
+			options.frame = parseInt(values[1], 10);
+			options.display = values[0];
 		}
 
 		this.ajax(`${window.config.api}/command/${command.name}`, 'POST', options).then(
@@ -199,9 +210,30 @@ class Controller {
 		});
 	}
 
+	displayChanged() {
+		let d = document.querySelector('#display_selector').value;
+
+		let display = this.layouts.find((val) => {
+			return val.display === d;
+		});
+
+		if (display) {
+			this.fillList(display.layouts,
+						document.querySelector('#layout_items'),
+						'layout',
+						this.layoutChanged.bind(this));
+		}
+	}
+
 	layoutChanged(event) {
 
-		let layout = this.layouts[event.target.value];
+		let display = document.querySelector('#display_selector').value;
+
+		let d = this.layouts.find((d) => {
+			return d.display === display;
+		});
+
+		let layout = d.layouts[event.target.value];
 		let canvas = document.querySelector('#previews');
 		canvas.innerHTML = '';
 		let screens = {};
@@ -247,19 +279,27 @@ class Controller {
 	fillFrameBox() {
 		let box = document.querySelector('#cmdFrame');
 		box.innerHTML = '';
-		let layout = this.layouts.find((l) => {
-			return l.name === this.state.layout;
-		});
+		this.state.layout.forEach((display, i) => {
+			let d = this.layouts.find((d) => {
+				return d.display === display.display;
+			});
 
-		if (!layout) {
-			return;
-		}
-
-		layout.frames.forEach((frame, i) => {
-			let option = document.createElement('option');
-			option.value = i;
-			option.textContent = frame.id;
-			box.appendChild(option);
+			if (!d) {
+				return;
+			}
+			let layout = d.layouts.find((l) => {
+				return l.name === display.layout;
+			});
+			if (!layout) {
+				return;
+			}
+			console.log(layout);
+			layout.frames.forEach((frame, k) => {
+				let option = document.createElement('option');
+				option.value = `${d.display}/${k}`;
+				option.textContent = `${d.display}/${frame.id}`;
+				box.appendChild(option);
+			});
 		});
 	}
 
@@ -309,12 +349,8 @@ class Controller {
 	getStatus() {
 		this.ajax(`${window.config.api}/status`, 'GET')
 			.then((state) => {
-				console.log(state);
-				let oldstate = this.state;
 				this.state = state;
-				if (oldstate.layout !== this.state.layout) {
-					this.fillFrameBox();
-				}
+				this.fillFrameBox();
 				if (state.running) {
 					this.commands.forEach((elem, index) => {
 						let id = state.running.findIndex((val) => {
@@ -346,7 +382,7 @@ class Controller {
 		this.layouts = [];
 		this.commands = [];
 		this.state = {
-			layout: "",
+			layout: [],
 			running: [0]
 		};
 
@@ -361,18 +397,19 @@ class Controller {
 			this.ajax(`${window.config.api}/layouts`, 'GET')
 				.then((layouts) => {
 					this.layouts = layouts;
-					this.fillList(this.layouts,
-						document.querySelector('#layout_items'),
-						'layout',
-						this.layoutChanged.bind(this));
+					let display = document.querySelector('#display_selector');
+					display.innerHTML = '';
+					this.layouts.forEach((item, i) => {
+						let option = document.createElement('option');
+						option.value = item.display;
+						option.textContent = item.display;
+						display.appendChild(option);
+					});
+					this.displayChanged();
 					resolve(layouts);
 				},
 				(err) => {
 					this.status(err);
-					this.fillList(this.layouts,
-						document.querySelector('#layout_items'),
-						'layout',
-						this.layoutChanged.bind(this));
 					reject(err);
 				});
 		});

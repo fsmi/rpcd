@@ -27,6 +27,11 @@
 				</div>
 				<div id="layouts_right" class="grid_right">
 					<h3>Available Layouts:</h3>
+					<label for="display_selector">Display:</label>
+					<select id="display_selector" onchange="window.controller.displayChanged()">
+						<option>-- Choose --</option>
+					</select>
+
 					<ul id="layout_items" class="grid_items">
 					</ul>
 				</div>
