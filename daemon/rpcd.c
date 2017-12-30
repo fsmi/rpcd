@@ -11,6 +11,7 @@
 #include "layout.h"
 #include "x11.h"
 #include "api.h"
+#include "control.h"
 
 volatile sig_atomic_t shutdown_requested = 0;
 volatile sig_atomic_t pid_signaled = 0;
@@ -104,5 +105,6 @@ bail:
 	x11_cleanup();
 	layout_cleanup();
 	command_cleanup();
+	control_cleanup();
 	return rv;
 }

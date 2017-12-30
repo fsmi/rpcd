@@ -331,7 +331,8 @@ select {
 
 .stop {
 	background-color: #dd0000;
-    color: white;
+	color: white;
+}
 
 #repo-link{
 	color:#888;

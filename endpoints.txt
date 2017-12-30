@@ -60,6 +60,7 @@ POST /command/name
 	Start a command
 	Request format
 		{
+			frame:4,
 			fullscreen:1,
 			arguments:{
 				"arg1":"value1",
