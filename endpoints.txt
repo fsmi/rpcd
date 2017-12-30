@@ -31,7 +31,7 @@ GET /layouts
 							...
 						],
 						screens:[
-							{id:5, w:1920, h:1080},
+							{id:5, width:1920, height:1080},
 							...
 						]
 					},
