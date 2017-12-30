@@ -417,7 +417,7 @@ static int api_handle_body(http_client_t* client){
 			api_send_header(client, "500 Missing display", false);
 		}
 		else{
-			*strchr(client->endpoint, '/') = 0;
+			*strchr(client->endpoint + 8, '/') = 0;
 			layout_t* layout = layout_find(x11_find_id(client->endpoint + 8), client->endpoint + strlen(client->endpoint) + 1);
 
 			if(!layout){

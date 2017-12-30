@@ -54,7 +54,7 @@ except for layout names, which are unique per display.
 
 | Section		| Option	| Default value		| Example value		| Description				| Notes
 |-----------------------|---------------|-----------------------|-----------------------|---------------------------------------|------
-|[web]			| bind		| none			| `10.23.0.1 8080`	| HTTP API host and port		|
+|[api]			| bind		| none			| `10.23.0.1 8080`	| HTTP API host and port		|
 |[x11 `name`]		| display	| `:0`			| `:0.0`		| X11 display identifier to use		|
 |			| deflayout	| none			| `layout_name`		| Layout to apply on reset		|
 |			| repatriate	| none			| `yes`			| Store current window-frame mapping	|
