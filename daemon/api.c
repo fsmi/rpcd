@@ -342,7 +342,7 @@ static int api_send_layouts(http_client_t* client){
 static int api_send_status(http_client_t* client){
 	int rv = 0, first = 1;
 	char send_buf[RECV_CHUNK];
-	size_t u, n = command_count();
+	size_t u, n = 0;
 	command_t* cmd = NULL;
 	display_t* display = NULL;
 	layout_t* layout = NULL;
@@ -363,6 +363,7 @@ static int api_send_status(http_client_t* client){
 	}
 
 	rv |= network_send(client->fd, "],\"running\":[");
+	n = command_count();
 	for(u = 0; u < n; u++){
 		cmd = command_get(u);
 		if(cmd->state != stopped){
