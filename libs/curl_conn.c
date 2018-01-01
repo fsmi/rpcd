@@ -24,29 +24,56 @@ CURL* c_init(const char* url) {
 	//curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
 	//curl_easy_setopt(curl, CURLOPT_USERAGENT, "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.86 Safari/537.36");
 	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
-	curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
+	//curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1);
 	return curl;
+}
+
+size_t write_header_callback(char* buffer, size_t size, size_t nitems, char** data) {
+
+	size_t len = size * nitems;
+	if (len > 4 && !strncmp(buffer, "HTTP", 4)) {
+		buffer[len - 1] = 0;
+		*data = malloc(len * sizeof(char));
+		strcpy(*data, buffer);
+	}
+
+	return len;
 }
 
 int curl_perform(CURL* curl) {
 	if (!curl) {
 		return 1;
 	}
-	CURLcode res = curl_easy_perform(curl);
 
+	char* header = NULL;
+
+	curl_easy_setopt(curl, CURLOPT_HEADERFUNCTION, write_header_callback);
+	curl_easy_setopt(curl, CURLOPT_HEADERDATA, &header);
+
+	CURLcode res = curl_easy_perform(curl);
 	/* Check for errors */
 	if (res != CURLE_OK) {
-
-		long status;
-		curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
-
-		fprintf(stderr, "curl_easy_perform() failed: %ld - %s\n",
-		status,
-		curl_easy_strerror(res));
+		fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(res));
+		free(header);
 		return 1;
 	}
 
-	return 0;
+	int ret = 0;
+	long status;
+	curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status);
+	char* old_header = header;
+	if (status >= 400) {
+		header = strstr(header, " ");
+		if (header) {
+			header = strstr(header + 1, " ");
+		}
+
+		fprintf(stderr, "curl_easy_perform() failed: %ld -%s\n", status, header);
+		ret = 1;
+	}
+	free(old_header);
+
+	return ret;
 }
 
 size_t write_callback(char* ptr, size_t size, size_t nmemb, struct netdata* userdata) {
@@ -78,7 +105,6 @@ int request(const char* url, char* post_data, struct netdata* data) {
 	data->len = 0;
 
 	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_callback);
-
 	curl_easy_setopt(curl, CURLOPT_WRITEDATA, data);
 	if (post_data) {
 		curl_easy_setopt(curl, CURLOPT_POSTFIELDS, post_data);
