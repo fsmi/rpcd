@@ -114,10 +114,41 @@ char* get_url(Config* config, char* format, ...) {
 	return url;
 }
 
+int parse_state_layout(Config* config, ejson_struct* root) {
+
+	ejson_struct* next = root;
+
+	char* name = NULL;
+	char* display = NULL;
+	printf("Active Layouts:\n");
+	while (next) {
+		name = NULL;
+		display = NULL;
+
+		ejson_get_string_from_key(next->child, "layout", false, &name);
+
+		if (!name) {
+			fprintf(stderr, "Layout name not found.\n");
+			return 1;
+		}
+
+		ejson_get_string_from_key(next->child, "display", false, &display);
+
+		if (display) {
+			printf("%s/%s\n", display, name);
+		} else {
+			printf("%s\n", name);
+		}
+
+		next = next->next;
+	}
+
+	return 0;
+}
+
 int parse_state(Config* config, struct netdata* data) {
 
 	ejson_struct* root = NULL;
-	printf("data(%ld/%ld): %s\n", data->len, strlen(data->data), data->data);
 
 	if (ejson_parse_warnings(&root, data->data, data->len, true, stderr) != EJSON_OK) {
 		return 1;
@@ -125,21 +156,25 @@ int parse_state(Config* config, struct netdata* data) {
 
 	if (root->type != EJSON_OBJECT) {
 		fprintf(stderr, "Root is not an object.\n");
+		ejson_cleanup(root);
 		return 1;
 	}
 
-	char* name;
-	if (ejson_get_string_from_key(root->child, "layout", false, &name) != EJSON_OK) {
-		fprintf(stderr, "Cannot get name of running layout.\n");
+	ejson_struct* elem = ejson_find_key(root->child, "layout", false);
+	if (!elem) {
+		fprintf(stderr, "Cannot get running layouts.\n");
+		ejson_cleanup(root);
 		return 1;
 	}
-	printf("Active Layout: %s\n", name);
-
-	ejson_struct* elem;
+	if (parse_state_layout(config, elem->child)) {
+		ejson_cleanup(root);
+		return 1;
+	}
 
 	elem = ejson_find_key(root->child, "running", false);
 	if (!elem) {
 		fprintf(stderr, "Cannot find running commands.\n");
+		ejson_cleanup(root);
 		return 1;
 	}
 	ejson_struct* next = elem->child;
@@ -149,6 +184,7 @@ int parse_state(Config* config, struct netdata* data) {
 	while (next) {
 		if (ejson_get_string(next, &cmd) != EJSON_OK) {
 			fprintf(stderr, "Command type is wrong.\n");
+			ejson_cleanup(root);
 			return 1;
 		}
 
@@ -229,7 +265,31 @@ int parse_screens(ejson_struct* root) {
 	return 0;
 }
 
-int parse_layouts(Config* config, struct netdata* data) {
+int parse_layouts(Config* config, ejson_struct* root, char* display) {
+	ejson_struct* next = root->child;
+
+	char* name;
+	while (next) {
+		if (ejson_get_string_from_key(next->child, "name", false, &name) != EJSON_OK) {
+			fprintf(stderr, "Name not found.\n");
+			return 1;
+		}
+
+		printf("------ name: %s/%s ------\n\n", display, name);
+
+		parse_frames(next->child);
+		printf("\n");
+		parse_screens(next->child);
+
+		printf("\n");
+
+		next = next->next;
+	}
+
+	return 0;
+}
+
+int parse_displays(Config* config, struct netdata* data) {
 
 	ejson_struct* root = NULL;
 
@@ -243,21 +303,24 @@ int parse_layouts(Config* config, struct netdata* data) {
 	}
 
 	ejson_struct* next = root->child;
-
-	char* name;
+	ejson_struct* layout;
+	char* display;
 	while (next) {
-		if (ejson_get_string_from_key(next->child, "name", false, &name) != EJSON_OK) {
-			fprintf(stderr, "Name not found.\n");
+		if (ejson_get_string_from_key(next->child, "display", false, &display) != EJSON_OK) {
+			fprintf(stderr, "Display name not found.\n");
 			return 1;
 		}
 
-		printf("------ name: %s ------\n\n", name);
+		layout = ejson_find_key(next->child, "layouts", false);
 
-		parse_frames(next->child);
-		printf("\n");
-		parse_screens(next->child);
+		if (!layout) {
+			fprintf(stderr, "Cannot find layouts key.\n");
+			return 1;
+		}
 
-		printf("\n");
+		if (parse_layouts(config, layout, display)) {
+			return 1;
+		}
 
 		next = next->next;
 	}
@@ -441,13 +504,9 @@ int state(Config* config) {
 		return 1;
 	}
 
-	printf("url: %s\n", url);
-
 	int status = request(url, NULL, &data);
 	free(url);
 	if (!status) {
-
-			printf("%s\n", data.data);
 		if (config->json) {
 			printf("%s\n", data.data);
 		} else {
@@ -472,7 +531,7 @@ int list_layouts(Config* config) {
 
 
 	if (!status) {
-		status = parse_layouts(config, &data);
+		status = parse_displays(config, &data);
 	}
 
 	free(data.data);
@@ -497,20 +556,37 @@ int stop_command(Config* config, char* name) {
 }
 
 int run_command(Config* config, char* name, int argc, char** args) {
-	const char* json_format = "{\"fullscreen\":%d,\"arguments\":{%s},\"frame\":%d}";
+	const char* json_format = "{\"fullscreen\":%d,\"arguments\":{%s},\"frame\":%d%s}";
 	char* keys[argc];
 	char* values[argc];
 	char* arg_json = strdup("");
 	char* format;
 	int length = 0;
 	int oldlength = 0;
-
 	int i;
+	char* display_format = ",\"display\":\"%s\"";
+	char* display;
+	char* dis_out;
+	int display_len = 0;
+	char* cmd;
+	display = strtok(name, "/");
+	cmd = strtok(NULL, "/");
+	if (cmd) {
+		display_len = snprintf(NULL, 0, display_format, display);
+		dis_out = calloc(display_len + 1, sizeof(char));
+		sprintf(dis_out, display_format, display);
+	} else {
+		cmd = name;
+		dis_out = strdup("");
+	}
+
 	for (i = 0; i < argc; i++) {
 		keys[i] = strtok(args[i], "=");
 		values[i] = strtok(NULL, "=");
 		if (values[i] == NULL) {
 			fprintf(stderr, "Command argument has no key: %s\n", keys[i]);
+			free(dis_out);
+			free(arg_json);
 			return EXIT_CMD_ARGUMENT_MISSING_KEY;
 		}
 		fprintf(stderr, "argument found: %s=%s\n", keys[i], values[i]);
@@ -524,21 +600,27 @@ int run_command(Config* config, char* name, int argc, char** args) {
 		arg_json = realloc(arg_json, oldlength + length + 1 * sizeof(char));
 		if (!arg_json) {
 			fprintf(stderr, "Cannot allocate memory.\n");
+			free(dis_out);
+			free(arg_json);
 			return 1;
 		}
 		sprintf(arg_json + oldlength, format, keys[i], values[i]);
 		oldlength += length;
 	}
 
-	length = snprintf(NULL, 0, json_format, config->fullscreen, arg_json, config->frame);
+	length = snprintf(NULL, 0, json_format, config->fullscreen, arg_json, config->frame, dis_out);
 	char* post_data = calloc(length + 1, sizeof(char));
 	if (!post_data) {
 		fprintf(stderr, "Cannot allocate memory.\n");
+		free(dis_out);
+		free(arg_json);
 		return 1;
 	}
-	sprintf(post_data, json_format, config->fullscreen, arg_json, config->frame);
+	sprintf(post_data, json_format, config->fullscreen, arg_json, config->frame, dis_out);
+	free(dis_out);
+	free(arg_json);
 
-	char* url = get_url(config, "command/%s", name);
+	char* url = get_url(config, "command/%s", cmd);
 	if (!url) {
 		fprintf(stderr, "Cannot build url.\n");
 		return 1;
@@ -576,8 +658,6 @@ int apply_layout(Config* config, char* name) {
 int handle_command(Config* config, int cmdc, char** cmds) {
 
 	if (!strcmp("list", cmds[0])) {
-		printf("list command\n");
-
 		if (cmdc < 2) {
 			fprintf(stderr, "list needs an argument (commands or layouts).\n");
 			return EXIT_MISSING_LIST_CMD;
