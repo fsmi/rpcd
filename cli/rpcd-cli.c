@@ -22,7 +22,8 @@ int usage(int argc, char** argv, Config* config) {
 			"    run <cmd> <args>   Run a command with the specified arguments (formatted as key=value)\n"
 			"    stop <command>     Stop a command\n"
 			"    reset              Reset the server\n"
-			"    status		Query server status\n"
+			"    status             Query server status\n"
+			"    help               Show this help text\n"
 			"\nOptions:\n"
 			"    -?, --help         Show this help text\n"
 			"    -F, --fullscreen   Run a command fullscreen\n"
@@ -643,6 +644,10 @@ int apply_layout(Config* config, char* name) {
 }
 
 int handle_command(Config* config, int cmdc, char** cmds) {
+	if(!strcmp("help", cmds[0])){
+		usage(0, NULL, config);
+		return 0;
+	}
 	if (!strcmp("layouts", cmds[0])) {
 		return list_layouts(config);
 	}
@@ -665,7 +670,7 @@ int handle_command(Config* config, int cmdc, char** cmds) {
 	} else if (!strcmp("status", cmds[0])) {
 		return state(config);
 	} else {
-		fprintf(stderr, "Unknown command, try --help\n");
+		usage(0, NULL, config);
 		return EXIT_UNKNOWN_CMD;
 	}
 

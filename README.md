@@ -23,6 +23,11 @@ and managing processes. It provides an API via HTTP, which is detailed in [endpo
 This module provides an interactive frontend to the daemon API, using HTML and JavaScript.
 It can also be served from a machine other than the one providing the API.
 
+### cli
+
+The `cli` module provides a command line interface (`rpcd-cli`), which can be used for automating
+interaction with `rpcd` servers.
+
 ## Build instructions
 
 To build the daemon, the following prerequisites are needed
@@ -31,7 +36,7 @@ To build the daemon, the following prerequisites are needed
 * GNU make
 * A C compiler
 
-Once those are met, running `make` in the daemon directory should suffice.
+Once those are met, running `make` in the root directory should suffice to build all the modules.
 
 ## Setup & Configuration
 
@@ -41,6 +46,8 @@ the API URL in [js/config.js](webclient/js/config.js) to your setup.
 To install the daemon, simply create your configuration file and run the daemon executable
 on the host running ratpoison (preferrably not as root). The first and only argument to the
 daemon executable is the configuration file to be used.
+
+To install the command line interface, run `make install` within the `cli` directory.
 
 The daemon configuration file closely mirrors the standard `ini` file format. An example
 configuration may be found in [daemon/rpcd.conf](daemon/rpcd.conf).
@@ -75,7 +82,7 @@ options. For `string` arguments, an optional hint may be supplied, which is disp
 
 Placeholders for which no argument configuration is specified are not replaced.
 
-## Usage
+## Usage (Web Interface)
 
 * To run a command
 	* Point your browser to the web client
@@ -89,7 +96,35 @@ Placeholders for which no argument configuration is specified are not replaced.
 	* Select a layout to view it
 	* Click `Apply` to activate it on the screen
 
-To generate a layout dump from an existing ratpoison instance, run `ratpoison -c sfdump`.
+
+## Usage (Command Line Interface)
+
+The command line interface client for the HTTP API may for example be used for automating interaction with `rpcd`.
+The module accepts the following parameters:
+
+| Parameter 		| Example		| Description					|
+|-----------------------|-----------------------|-----------------------------------------------|
+|`--help`, `help`, `-?`|			| Print a short help summary			|
+|`commands`		|			| List all commands supported by the server	|
+|`layouts`		|			| List all layouts supported by the server	|
+|`apply <layout>`	|`apply gpu/fullscreen`	| Load a layout on a display			|
+|`run <command> <args>`|`run xecho Text=foo`	| Run a command with arguments, formatted as `key=value` |
+|`stop <command>`	|`stop xecho`		| Stop a command				|
+|`reset`		|			| Reset the `rpcd` instance, stopping all commands and loading the default layouts |
+|`status`		|			| Query server status				|
+|`--fullscreen`, `-F`	|			| Run a command in fullscreen mode		|
+|`--frame <frame>`, `-f`| `-f gpu/0`		| Select a frame to run a command in		|
+|`--json`, `-j`		|			| Print machine-readable JSON output		|
+|`--host <host>`, `-h`	| `-h display-server`	| Select the target host (Default: `localhost`)	|
+|`--port <port>`, `-p`	| `-p 8080`		| Select the API port (Default: `8080`)		|
+
+## Usage (Daemon)
+
+Interaction with the daemon is mostly limited to the HTTP API. It is documented in [endpoints.txt](endpoints.txt)
+and may be accessed either directly or through the provided interfaces.
+
+To generate a layout dump from an existing ratpoison instance for use with `rpcd`, run `ratpoison -c sfdump` and
+store the output to a file.
 
 ## Background
 
