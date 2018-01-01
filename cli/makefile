@@ -1,26 +1,21 @@
 .PHONY: clean install debug
 
-DESTDIR=/
-INSTALL_DIR=usr/local/bin
-CFLAGS=-Wall
-LDFLAGS=-lcurl
+PREFIX ?= /usr/local
+CFLAGS ?= -Wall -g
+LDLIBS = -lcurl
 
-OBJECTS= $(patsubst %.c, %.o, $(wildcard *.c ../libs/*.c))
-DEPS= $(wildcard *.h ../libs/*.h)
+OBJECTS = $(patsubst %.c, %.o, $(wildcard *.c ../libs/*.c))
+DEPS = $(wildcard *.h ../libs/*.h)
 
 all: rpcd-cli
-
-debug: CFLAGS += -g
-debug: rpcd-cli
 
 rpcd-cli: $(OBJECTS)
 
 %.o: %.c $(DEPS)
 	$(CC) $(CFLAGS) $(LDFLAGS) -c -o $@ $<
 
-
 install:
-	install -m 0755 -D rpcd-cli $(DESTDIR)$(INSTALL_DIR)/rpcd-cli
+	install -m 0755 -D rpcd-cli "$(DESTDIR)$(PREFIX)/bin"
 
 clean:
 	$(RM) $(OBJECTS)
