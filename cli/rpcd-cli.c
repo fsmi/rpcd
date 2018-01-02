@@ -5,12 +5,49 @@
 
 #include <stdarg.h>
 
+#include "../libs/strdup.h"
 #include "../libs/easy_args.h"
 #include "../libs/curl_conn.h"
 #include "../libs/easy_json.h"
 
 #include "rpcd-cli.h"
 
+/**
+ * Returns a allocated formatted string.
+ * Like sprintf but with alloction.
+ */
+char* c_sprintf(const char* format, ...) {
+
+	va_list ap;
+
+	va_start(ap, format);
+
+	// get length
+	int len = vsnprintf(NULL, 0, format, ap);
+
+	va_end(ap);
+
+	if (len <= 0) {
+		fprintf(stderr, "snprintf returns a negative or zero length.\n");
+		return NULL;
+	}
+
+	// allocate
+	char* out = calloc(len + 1, sizeof(char));
+
+	if (!out) {
+		fprintf(stderr, "Cannot allocate memory.\n");
+		return NULL;
+	}
+
+	va_start(ap, format);
+
+	// copy
+	vsprintf(out, format, ap);
+	va_end(ap);
+
+	return out;
+}
 int usage(int argc, char** argv, Config* config) {
 
 	printf("%s - rpcd client\n"
@@ -87,6 +124,7 @@ int set_port(int argc, char** argv, Config* config) {
 	return 1;
 }
 
+
 char* get_url(Config* config, char* format, ...) {
 	va_list ap;
 	const char* url_format = "http://%s:%d/";
@@ -98,12 +136,14 @@ char* get_url(Config* config, char* format, ...) {
 	va_end(ap);
 
 	if (url_len <= 0 || arg_len <= 0) {
+		fprintf(stderr, "snprintf return negative or zero length.\n");
 		return NULL;
 	}
 
 	char* url = calloc(url_len + arg_len + 1, sizeof(char));
 
 	if (!url) {
+		fprintf(stderr, "cannot allocate memory.\n");
 		return NULL;
 	}
 
@@ -466,194 +506,143 @@ int parse_commands(Config* config, struct netdata* data) {
 	return 0;
 }
 
-int list_commands(Config* config) {
+int fetch(Config* config, char* url_param, int (*func)(Config* config, struct netdata* data)) {
+	int status = 0;
 
 	struct netdata data = {0};
-
-	char* url = get_url(config, "commands");
+	char* url = get_url(config, url_param);
 
 	if (!url) {
-		fprintf(stderr, "Cannot allocate memory for url.\n");
 		return 1;
 	}
 
-	printf("url: %s\n", url);
-
-	int status = request(url, NULL, &data);
+	status = request(url, NULL, &data);
 	free(url);
 	if (!status) {
-
 		if (config->json) {
 			printf("%s\n", data.data);
 		} else {
-			status = parse_commands(config, &data);
+			status = func(config, &data);
 		}
 	}
 
 	free(data.data);
+
 	return status;
+}
+
+int list_commands(Config* config) {
+	return fetch(config, "commands", parse_commands);
 }
 
 int state(Config* config) {
-	struct netdata data = {0};
-
-	char* url = get_url(config, "status");
-
-	if (!url) {
-		fprintf(stderr, "Cannot allocate memory for url.\n");
-		return 1;
-	}
-
-	int status = request(url, NULL, &data);
-	free(url);
-	if (!status) {
-		if (config->json) {
-			printf("%s\n", data.data);
-		} else {
-			status = parse_state(config, &data);
-		}
-	}
-
-	free(data.data);
-	return status;
+	return fetch(config, "status", parse_state);
 }
 
 int list_layouts(Config* config) {
-	char* url = get_url(config, "layouts");
-
-	if (!url) {
-		fprintf(stderr, "Cannot build url.\n");
-		return 1;
-	}
-
-	struct netdata data = {};
-	int status = request(url, NULL, &data);
-
-
-	if (!status) {
-		status = parse_displays(config, &data);
-	}
-
-	free(data.data);
-	free(url);
-	return status;
+	return fetch(config, "layouts", parse_displays);
 }
 
-int stop_command(Config* config, char* name) {
+int exec_request(Config* config, char* format, char* name, char* post_data) {
 
-	char* url = get_url(config, "stop/%s", name);
+	char* url = get_url(config, format, name);
 	if (!url) {
-		fprintf(stderr, "Cannot build url.\n");
 		return 1;
 	}
-
-	struct netdata data = {};
-	int status = request(url, NULL, &data);
-
-	free(data.data);
-	free(url);
-	return status;
-}
-
-int run_command(Config* config, char* name, int argc, char** args) {
-	const char* json_format = "{\"fullscreen\":%d,\"arguments\":{%s},\"frame\":%d%s}";
-	char* keys[argc];
-	char* values[argc];
-	char* arg_json = strdup("");
-	char* format;
-	int length = 0;
-	int oldlength = 0;
-	int i;
-	char* display_format = ",\"display\":\"%s\"";
-	char* display;
-	char* dis_out;
-	int display_len = 0;
-	char* cmd;
-	display = strtok(name, "/");
-	cmd = strtok(NULL, "/");
-	if (cmd) {
-		display_len = snprintf(NULL, 0, display_format, display);
-		dis_out = calloc(display_len + 1, sizeof(char));
-		sprintf(dis_out, display_format, display);
-	} else {
-		cmd = name;
-		dis_out = strdup("");
-	}
-
-	for (i = 0; i < argc; i++) {
-		keys[i] = strtok(args[i], "=");
-		values[i] = strtok(NULL, "=");
-		if (values[i] == NULL) {
-			fprintf(stderr, "Command argument has no key: %s\n", keys[i]);
-			free(dis_out);
-			free(arg_json);
-			return EXIT_CMD_ARGUMENT_MISSING_KEY;
-		}
-		fprintf(stderr, "argument found: %s=%s\n", keys[i], values[i]);
-
-		if (i == 0) {
-			format = "\"%s\":\"%s\"";
-		} else {
-			format = ",\"%s\":\"%s\"";
-		}
-		length = snprintf(NULL, 0, format , keys[i], values[i]);
-		arg_json = realloc(arg_json, oldlength + length + 1 * sizeof(char));
-		if (!arg_json) {
-			fprintf(stderr, "Cannot allocate memory.\n");
-			free(dis_out);
-			free(arg_json);
-			return 1;
-		}
-		sprintf(arg_json + oldlength, format, keys[i], values[i]);
-		oldlength += length;
-	}
-
-	length = snprintf(NULL, 0, json_format, config->fullscreen, arg_json, config->frame, dis_out);
-	char* post_data = calloc(length + 1, sizeof(char));
-	if (!post_data) {
-		fprintf(stderr, "Cannot allocate memory.\n");
-		free(dis_out);
-		free(arg_json);
-		return 1;
-	}
-	sprintf(post_data, json_format, config->fullscreen, arg_json, config->frame, dis_out);
-	free(dis_out);
-	free(arg_json);
-
-	char* url = get_url(config, "command/%s", cmd);
-	if (!url) {
-		fprintf(stderr, "Cannot build url.\n");
-		return 1;
-	}
-
-	printf("url: %s\ndata:%s\n", url, post_data);
 
 	struct netdata data = {};
 	int status = request(url, post_data, &data);
-
 	free(data.data);
 	free(url);
-	free(post_data);
+
 	return status;
 }
 
 int apply_layout(Config* config, char* name) {
-	printf("apply layout %s\n", name);
+	return exec_request(config, "layout/%s", name, NULL);
+}
+int stop_command(Config* config, char* name) {
+	return exec_request(config, "stop/%s", name, NULL);
+}
 
-	char* url = get_url(config, "layout/%s", name);
+int assamble_arguments(int argc, char** argv, char** out) {
+	char* key;
+	char* value;
+	char* format;
+	*out = strdup("");
+	unsigned int u;
+	int length = 0;
+	int old_length = 0;
+	for (u = 0; u < argc; u++) {
+		key = strtok(argv[u], "=");
+		value = strtok(NULL, "=");
 
-	if (!url) {
-		fprintf(stderr, "Cannot build url.\n");
+		if (!value) {
+			fprintf(stderr, "Command argument has no key: %s\n", key);
+			return EXIT_CMD_ARGUMENT_MISSING_KEY;
+		}
+		if (u == 0) {
+			format = "\"%s\":\"%s\"";
+		} else {
+			format = ",\"%s\":\"%s\"";
+		}
+		length = snprintf(NULL, 0, format , key, value);
+		*out = realloc(*out, old_length + length + 1 * sizeof(char));
+		if (!*out) {
+			return EXIT_ALLOCATION_FAILED;
+		}
+		sprintf(*out + old_length, format, key, value);
+		old_length += length;
+	}
+
+	return EXIT_SUCCESS;
+}
+
+int run_command(Config* config, char* name, int argc, char** args) {
+	const char* json_format = "{\"fullscreen\":%d,\"arguments\":{%s},\"frame\":%d%s}";
+	char* display_format = ",\"display\":\"%s\"";
+	char* display;
+	char* json_display;
+	char* cmd;
+
+	// parse display (format: <display>/<name>)
+	display = strtok(name, "/");
+	cmd = strtok(NULL, "/");
+
+	// if no / is found the display is not given.
+	if (cmd) {
+		json_display = c_sprintf(display_format, display);
+		if (!json_display) {
+			return 1;
+		}
+	} else {
+		cmd = name;
+		json_display = strdup("");
+	}
+	char* json_arg = NULL;
+
+	int status = assamble_arguments(argc, args, &json_arg);
+
+	if (status) {
+		free(json_arg);
+		free(json_display);
+		return status;
+	}
+
+	char* post_data = c_sprintf(json_format, config->fullscreen, json_arg, config->frame, json_display);
+	free(json_display);
+	free(json_arg);
+
+	if (!post_data) {
 		return 1;
 	}
 
-	struct netdata data = {};
-	int status = request(url, NULL, &data);
+	status = exec_request(config, "command/%s", cmd, post_data);
 
-	free(data.data);
-	free(url);
+	free(post_data);
 	return status;
 }
+
 
 int handle_command(Config* config, int cmdc, char** cmds) {
 
