@@ -133,7 +133,6 @@ class Controller {
 
 	applyLayout() {
 		let layout = document.querySelector('input[name="layouts"]:checked').value;
-		this.status(`Applied layout ${this.layouts[layout].name}`);
 		let display = document.querySelector('#display_selector').value;
 
 		let d = this.layouts.find((d) => {
