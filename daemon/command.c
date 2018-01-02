@@ -110,6 +110,10 @@ static void command_child(command_t* command, command_instance_t* args){
 						if(!strncmp(argv[nargs] + u + 1, command->args[p].name, strlen(command->args[p].name))){
 							//wasteful allocs
 							replacement = calloc(strlen(argv[nargs]) + strlen(args->arguments[p]) + 1, sizeof(char));
+							if(!replacement){
+								fprintf(stderr, "Failed to allocate memory\n");
+								exit(EXIT_FAILURE);
+							}
 							memcpy(replacement, argv[nargs], u);
 							memcpy(replacement + u, args->arguments[p], strlen(args->arguments[p]));
 							memcpy(replacement + u + strlen(args->arguments[p]), argv[nargs] + u + strlen(command->args[p].name) + 1, strlen(argv[nargs] + u + strlen(command->args[p].name)));
