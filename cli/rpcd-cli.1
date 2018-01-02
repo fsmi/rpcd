@@ -1,0 +1,78 @@
+.TH RPCD-CLI 1 "January 2018" "v0.1"
+.SH NAME
+rpcd-cli \- Command line interface client for the rpcd API
+.SH SYNOPSIS
+
+.BI "rpcd-cli [" OPTIONS "] [" COMMAND "]"
+
+.SH DESCRIPTION
+.B rpcd-cli
+allows users to interact with an rpcd daemon service running on another host via the command line.
+This includes capabilities to query the server status, commands and layouts as well as loading layouts
+and starting/stopping commands.
+
+.SH OPTIONS
+.TP
+.B "--fullscreen, -F"
+Run a command in fullscreen mode. The display and screen to operate on are passed with the
+.IR --frame " option. If it is omitted, the default display and last used frame are assumed."
+
+.TP
+.BI "--frame " frame ", -f " frame
+Select the frame and display to run a command in. Formatted as
+.IR display / frame .
+
+.TP
+.BI "--host " host ", -h " host
+Select the target host running an rpcd instance. The default host is
+.IR localhost .
+
+.TP
+.BI "--port " port ", -p " port
+Select the API port of the remote rpcd instance. The default port is
+.IR 8080 .
+
+.TP
+.B "--json, -j"
+Output machine-readable JSON instead of human-readable text.
+
+.SH COMMANDS
+
+.TP
+.B commands
+List all commands supported on the rpcd daemon.
+
+.TP
+.B layouts
+List all layouts that may be loaded on the rpcd daemon.
+
+.TP
+.B status
+Query the current server status.
+
+.TP
+.B reset
+Stop all running commands and load all default layouts, thus resetting the server state.
+
+.TP
+.BI apply " layout"
+Load a layout on the rpcd server. The layout is specified as
+.IR display / layout ". If the display specification is omitted, no layout is loaded."
+
+.TP
+.BI run " command args"
+.RI "Run " command " with the arguments specified in " args ", formatted as
+.IB key = value
+.RB "pairs. May be combined with the " --frame " and " --fullscreen " options.
+
+.TP
+.BI stop " command"
+.RI "Stop " command " on the rpcd server instance."
+
+.SH BUGS
+Command, Argument and Layout names are matched case-sensitive currently. This may be changed in the future.
+
+.SH AUTHORS
+ Jan "mpease" Duepmeier <me at mpease dot de>
+.SH "SEE ALSO"
+ Online documentation and homepage of the rpcd project at https://github.com/fsmi/rpcd
