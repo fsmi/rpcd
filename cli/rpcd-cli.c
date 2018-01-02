@@ -7,9 +7,9 @@
 
 #include "../libs/strdup.h"
 #include "../libs/easy_args.h"
-#include "../libs/curl_conn.h"
 #include "../libs/easy_json.h"
 
+#include "curl_conn.h"
 #include "rpcd-cli.h"
 
 /**
