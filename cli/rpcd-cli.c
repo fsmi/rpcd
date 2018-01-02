@@ -96,11 +96,19 @@ int set_frame(int argc, char** argv, Config* config) {
 	if (argc < 2) {
 		return -1;
 	}
+	char* display = strtok(argv[1], "/");
+	char* frame = strtok(NULL, "/");
+
+	if (frame) {
+		config->display = display;
+	} else {
+		frame = display;
+	}
 
 	char* endptr;
 
-	config->frame = strtoul(argv[1], &endptr, 10);
-	if (argv[1] == endptr) {
+	config->frame = strtoul(frame, &endptr, 10);
+	if (frame == endptr) {
 		fprintf(stderr, "Frame ID should be an unsigned number\n");
 		return -1;
 	}
@@ -588,22 +596,14 @@ int assamble_arguments(int argc, char** argv, char** out) {
 int run_command(Config* config, char* name, int argc, char** args) {
 	const char* json_format = "{\"fullscreen\":%d,\"arguments\":{%s},\"frame\":%d%s}";
 	char* display_format = ",\"display\":\"%s\"";
-	char* display;
 	char* json_display;
-	char* cmd;
 
-	// parse display (format: <display>/<name>)
-	display = strtok(name, "/");
-	cmd = strtok(NULL, "/");
-
-	// if no / is found the display is not given.
-	if (cmd) {
-		json_display = c_sprintf(display_format, display);
+	if (config->display) {
+		json_display = c_sprintf(display_format, config->display);
 		if (!json_display) {
 			return 1;
 		}
 	} else {
-		cmd = name;
 		json_display = strdup("");
 	}
 	char* json_arg = NULL;
@@ -624,12 +624,11 @@ int run_command(Config* config, char* name, int argc, char** args) {
 		return 1;
 	}
 
-	status = exec_request(config, "command/%s", cmd, post_data);
+	status = exec_request(config, "command/%s", name, post_data);
 
 	free(post_data);
 	return status;
 }
-
 
 int handle_command(Config* config, int cmdc, char** cmds) {
 
