@@ -72,6 +72,16 @@ int command_reap(){
 	return 0;
 }
 
+int command_discard_restores(size_t display_id){
+	size_t u;
+	for(u = 0; u < ncommands; u++){
+		if(commands[u].display_id == display_id){
+			commands[u].restore_layout = 0;
+		}
+	}
+	return 0;
+}
+
 static void command_child(command_t* command, command_instance_t* args){
 	char* token = NULL, *child = NULL, **argv = NULL, *replacement = NULL;
 	size_t nargs = 1, u, p;

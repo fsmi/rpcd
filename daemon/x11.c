@@ -5,6 +5,7 @@
 
 #include "x11.h"
 #include "control.h"
+#include "command.h"
 
 static int init_done = 0;
 static size_t ndisplays = 0;
@@ -239,6 +240,8 @@ int x11_activate_layout(layout_t* layout){
 
 	rv = x11_run_command(display, layout_string, NULL);
 	display->current_layout = layout;
+	//stop commands from undoing the layout change
+	command_discard_restores(layout->display_id);
 bail:
 	free(layout_string);
 	return rv;

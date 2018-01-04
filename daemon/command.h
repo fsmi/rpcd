@@ -35,6 +35,7 @@ typedef struct /*_command_instance_cfg*/ {
 } command_instance_t;
 
 int command_active(command_t* command);
+int command_discard_restores(size_t display_id);
 int command_run(command_t* command, char* posted_json, size_t data_length);
 int command_stop(command_t* command);
 int command_reap();
