@@ -277,6 +277,7 @@ class Controller {
 
 	fillFrameBox() {
 		let box = document.querySelector('#cmdFrame');
+		let oldvalue = box.value;
 		box.innerHTML = '';
 		this.state.layout.forEach((display, i) => {
 			let d = this.layouts.find((d) => {
@@ -292,10 +293,12 @@ class Controller {
 			if (!layout) {
 				return;
 			}
-			console.log(layout);
 			layout.frames.forEach((frame, k) => {
 				let option = document.createElement('option');
 				option.value = `${d.display}/${k}`;
+				if (option.value === oldvalue) {
+					option.selected = true;
+				}
 				option.textContent = `${d.display}/${frame.id}`;
 				box.appendChild(option);
 			});
