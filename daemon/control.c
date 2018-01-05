@@ -103,7 +103,7 @@ int control_window_new(char* name){
 	}
 
 	for(u = 0; u < nwindows; u++){
-		if(!strcmp(windows[u].name, name)){
+		if(!strcasecmp(windows[u].name, name)){
 			fprintf(stderr, "Window %s already defined\n", name);
 			return 1;
 		}

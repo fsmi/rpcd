@@ -651,7 +651,11 @@ int handle_command(Config* config, int cmdc, char** cmds) {
 		if (stop_command(config, cmds[1])) {
 			return EXIT_REQUEST_ERROR;
 		}
-	} else if (!strcmp("state", cmds[0]) || !strcmp("status", cmds[0])) {
+	}
+	else if(!strcmp("apply", cmds[0])){
+		return apply_layout(config, cmds[1]);
+	}
+	else if (!strcmp("state", cmds[0]) || !strcmp("status", cmds[0])) {
 		return state(config);
 	} else {
 		fprintf(stderr, "Command %s unkown.\n", cmds[0]);

@@ -30,7 +30,7 @@ layout_t* layout_find(size_t display_id, char* name){
 	size_t u;
 
 	for(u = 0; u < nlayouts; u++){
-		if(layouts[u].display_id == display_id && !strcmp(layouts[u].name, name)){
+		if(layouts[u].display_id == display_id && !strcasecmp(layouts[u].name, name)){
 			return layouts + u;
 		}
 	}
@@ -189,7 +189,7 @@ int layout_new(char* name){
 	}
 
 	for(u = 0; u < nlayouts; u++){
-		if(!strcmp(layouts[u].name, name) && layouts[u].display_id == display_id){
+		if(!strcasecmp(layouts[u].name, name) && layouts[u].display_id == display_id){
 			fprintf(stderr, "Layout %s already exists on display %s\n", name, display_name);
 			return 1;
 		}

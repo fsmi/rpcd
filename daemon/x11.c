@@ -26,7 +26,7 @@ size_t x11_find_id(char* name){
 	size_t u;
 
 	for(u = 0; u < ndisplays; u++){
-		if(!strcmp(displays[u].name, name)){
+		if(!strcasecmp(displays[u].name, name)){
 			return u;
 		}
 	}
@@ -300,7 +300,7 @@ int x11_new(char* name){
 	}
 
 	for(u = 0; u < ndisplays; u++){
-		if(!strcmp(displays[u].name, name)){
+		if(!strcasecmp(displays[u].name, name)){
 			fprintf(stderr, "Display name %s already defined\n", name);
 			return 1;
 		}

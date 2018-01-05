@@ -117,7 +117,7 @@ static void command_child(command_t* command, command_instance_t* args){
 			for(u = 0; argv[nargs][u]; u++){
 				if(argv[nargs][u] == '%'){
 					for(p = 0; p < command->nargs; p++){
-						if(!strncmp(argv[nargs] + u + 1, command->args[p].name, strlen(command->args[p].name))){
+						if(!strncasecmp(argv[nargs] + u + 1, command->args[p].name, strlen(command->args[p].name))){
 							//wasteful allocs
 							replacement = calloc(strlen(argv[nargs]) + strlen(args->arguments[p]) + 1, sizeof(char));
 							if(!replacement){
@@ -188,7 +188,7 @@ command_t* command_get(size_t index){
 command_t* command_find(char* name){
 	size_t u;
 	for(u = 0; u < ncommands; u++){
-		if(!strcmp(name, commands[u].name)){
+		if(!strcasecmp(name, commands[u].name)){
 			return commands + u;
 		}
 	}
@@ -198,7 +198,9 @@ command_t* command_find(char* name){
 static int command_verify_enum(argument_t* arg, char* value){
 	char** item = NULL;
 	for(item = arg->additional; *item; item++){
-		if(!strcmp(*item, value)){
+		if(!strcasecmp(*item, value)){
+			//fix up case of submitted value
+			memcpy(value, *item, strlen(*item));
 			return 0;
 		}
 	}
@@ -258,6 +260,7 @@ static int command_parse_json(command_t* command, command_instance_t* instance, 
 		}
 		for (u = 0; u < command->nargs; u++) {
 			cmd_arg = command->args + u;
+			//FIXME this needs to compare the key in a case-insensitive manner
 			arg = ejson_find_key(args, cmd_arg->name, true);
 			if(arg){
 				if (ejson_get_string(arg, &instance->arguments[u]) != EJSON_OK) {
@@ -338,7 +341,7 @@ int command_new(char* name){
 	size_t u;
 
 	for(u = 0; u < ncommands; u++){
-		if(!strcmp(commands[u].name, name)){
+		if(!strcasecmp(commands[u].name, name)){
 			fprintf(stderr, "Command %s already defined\n", name);
 			return 1;
 		}
@@ -400,7 +403,7 @@ int command_config(char* option, char* value){
 
 	//check if the argument was already defined
 	for(u = 0; u < last->nargs; u++){
-		if(!strcmp(last->args[u].name, option)){
+		if(!strcasecmp(last->args[u].name, option)){
 			fprintf(stderr, "Command %s has duplicate arguments %s\n", last->name, option);
 		}
 	}

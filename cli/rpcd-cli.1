@@ -10,6 +10,8 @@ rpcd-cli \- Command line interface client for the rpcd API
 allows users to interact with an rpcd daemon service running on another host via the command line.
 This includes capabilities to query the server status, commands and layouts as well as loading layouts
 and starting/stopping commands.
+Command, Display and Layout names as well as enum argument values are matched case-insensitively to allow
+for less typing effort. Argument names are currently matched case-sensitively.
 
 .SH OPTIONS
 .TP
@@ -70,7 +72,8 @@ Load a layout on the rpcd server. The layout is specified as
 .RI "Stop " command " on the rpcd server instance."
 
 .SH BUGS
-Command, Argument and Layout names are matched case-sensitive currently. This may be changed in the future.
+Should you encounter bugs in these tools, please report them to the project bug tracker
+at https://github.com/fsmi/rpcd/issues 
 
 .SH AUTHORS
  Jan "mpease" Duepmeier <me at mpease dot de>
