@@ -21,6 +21,9 @@ typedef struct _x11_display_t {
 	Atom rp_command;
 	Atom rp_command_request;
 	Atom rp_command_result;
+
+	size_t nfds;
+	int* fds;
 } display_t;
 
 size_t x11_count();

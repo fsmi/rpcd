@@ -35,6 +35,56 @@ size_t x11_find_id(char* name){
 	return 0;
 }
 
+static int x11_handle_event(display_t* display, XEvent ev){
+	switch(ev.type){
+		case MapNotify:
+			fprintf(stderr, "Window %zu mapped on display %s\n", ev.xmap.window, display->identifier);
+			break;
+		case UnmapNotify:
+			fprintf(stderr, "Window %zu unmapped on display %s\n", ev.xunmap.window, display->identifier);
+			break;
+	}
+	return 0;
+}
+
+static void x11_connection_watch(Display* dpy, XPointer data, int fd, Bool opening, XPointer* watch_data){
+	size_t u;
+	display_t* display = NULL;
+	fprintf(stderr, "watch called\n");
+
+	if(!data){
+		fprintf(stderr, "x11_connection_watch called with invalid display data\n");
+		return;
+	}
+
+	display = (display_t*) data;
+
+	for(u = 0; u < display->nfds; u++){
+		if(display->fds[u] == fd){
+			if(!opening){
+				display->fds[u] = -1;
+			}
+			return;
+		}
+
+		//this might cause an fd to appear multiple times, but we do not actually care
+		if(opening && display->fds[u] == -1){
+			display->fds[u] = fd;
+			return;
+		}
+	}
+
+	display->fds = realloc(display->fds, (display->nfds + 1) * sizeof(int));
+	if(!display->fds){
+		fprintf(stderr, "Failed to allocate memory\n");
+		display->nfds = 0;
+		return;
+	}
+
+	display->fds[display->nfds] = fd;
+	display->nfds++;
+}
+
 //See ratpoison:src/communications.c for the original implementation of the ratpoison
 //command protocol
 static int x11_fetch_response(display_t* display, Window w, char** response){
@@ -177,6 +227,9 @@ static void x11_display_free(display_t* display){
 	if(display->display_handle){
 		XCloseDisplay(display->display_handle);
 	}
+
+	display->nfds = 0;
+	free(display->fds);
 }
 
 static int x11_display_init(display_t* display, char* name){
@@ -273,7 +326,8 @@ layout_t* x11_current_layout(size_t display_id){
 }
 
 int x11_loop(fd_set* in, fd_set* out, int* max_fd){
-	size_t u;
+	size_t u, p, mark;
+	XEvent ev;
 
 	if(!init_done){
 		for(u = 0; u < ndisplays; u++){
@@ -286,6 +340,37 @@ int x11_loop(fd_set* in, fd_set* out, int* max_fd){
 			}
 		}
 		init_done = 1;
+	}
+
+	for(u = 0; u < ndisplays; u++){
+		mark = 0;
+
+		//check if display data ready
+		for(p = 0; p < displays[u].nfds; p++){
+			if(displays[u].fds[p] >= 0 && FD_ISSET(displays[u].fds[p], in)){
+				XProcessInternalConnection(displays[u].display_handle, displays[u].fds[p]);
+				mark = 1;
+			}
+		}
+
+		//handle display events
+		if(mark){
+			while(XPending(displays[u].display_handle)){
+				XNextEvent(displays[u].display_handle, &ev);
+				if(x11_handle_event(displays + u, ev)){
+					return 1;
+				}
+			}
+			XFlush(displays[u].display_handle);
+		}
+
+		//push all display fds to the core select loop
+		for(p = 0; p < displays[u].nfds; p++){
+			if(displays[u].fds[p] >= 0){
+				*max_fd = (*max_fd > displays[u].fds[p]) ? *max_fd : displays[u].fds[p];
+				FD_SET(displays[u].fds[p], out);
+			}
+		}
 	}
 	return 0;
 }
@@ -320,6 +405,8 @@ int x11_new(char* name){
 
 int x11_config(char* option, char* value){
 	display_t* last = displays + (ndisplays - 1);
+	size_t u;
+
 	if(!strcmp(option, "display")){
 		if(last->identifier){
 			fprintf(stderr, "Multiple display connections specified for display %s\n", last->name);
@@ -331,13 +418,31 @@ int x11_config(char* option, char* value){
 			fprintf(stderr, "Failed to open display %s\n", value);
 			return 1;
 		}
+
+		//fetch ratpoison-specific atoms
 		last->rp_command = XInternAtom(last->display_handle, "RP_COMMAND", True);
 		last->rp_command_request = XInternAtom(last->display_handle, "RP_COMMAND_REQUEST", True);
 		last->rp_command_result = XInternAtom(last->display_handle, "RP_COMMAND_RESULT", True);
+
+		//add connection watch function for fd updates
+		if(!XAddConnectionWatch(last->display_handle, x11_connection_watch, (XPointer) last)){
+			fprintf(stderr, "Failed to add X11 connection watch function\n");
+			return 1;
+		}
+		//add primary fd (according to the docs, the watch procedure is called immediately after registering,
+		//with all open fds. in practice, this does not seem to happen)
+		x11_connection_watch(last->display_handle, (XPointer) last, XConnectionNumber(last->display_handle), True, NULL);
+
+		//copy identifier for updating children's DISPLAY environment
 		last->identifier = strdup(value);
 		if(!last->identifier){
 			fprintf(stderr, "Failed to allocate memory\n");
 			return 1;
+		}
+
+		fprintf(stderr, "%d screens on display %s\n", XScreenCount(last->display_handle), value);
+		for(u = 0; u < XScreenCount(last->display_handle); u++){
+			XSelectInput(last->display_handle, XRootWindow(last->display_handle, u), StructureNotifyMask | SubstructureNotifyMask);
 		}
 		return 0;
 	}
