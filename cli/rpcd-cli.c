@@ -675,6 +675,17 @@ int main(int argc, char** argv) {
 		.frame = 1
 	};
 
+	char* envhost = getenv("RPCD_HOST");
+	char* envport = getenv("RPCD_PORT");
+
+	if (envhost) {
+		config.host = envhost;
+	}
+
+	if (envport) {
+		config.port = strtoul(envport, NULL, 10);
+	}
+
 	eargs_addArgument("-?", "--help", usage, 0);
 	eargs_addArgument("-F", "--fullscreen", set_fullscreen, 0);
 	eargs_addArgument("-f", "--frame", set_frame, 1);
