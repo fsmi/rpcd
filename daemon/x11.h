@@ -2,12 +2,24 @@
 #define RPCD_DISPLAY_H
 #include <sys/select.h>
 #include <X11/Xlib.h>
+#include <X11/Xutil.h>
 #include <X11/Xatom.h>
 #include "layout.h"
 
 #define DATA_CHUNK 1024
 
-typedef struct _x11_display_t {
+typedef enum {
+	inactive = 0,
+	unconfigured,
+	active
+} window_state_t;
+
+typedef struct {
+	Window window;
+	window_state_t state;
+} tracked_window_t;
+
+typedef struct /*_x11_display_t*/ {
 	layout_t* default_layout;
 	layout_t* current_layout;
 
@@ -21,6 +33,7 @@ typedef struct _x11_display_t {
 	Atom rp_command;
 	Atom rp_command_request;
 	Atom rp_command_result;
+	Atom net_wm_pid;
 
 	size_t nfds;
 	int* fds;

@@ -8,8 +8,11 @@
 #include "command.h"
 
 static int init_done = 0;
+
 static size_t ndisplays = 0;
 static display_t* displays = NULL;
+static size_t nwindows = 0;
+static tracked_window_t* windows = NULL;
 
 size_t x11_count(){
 	return ndisplays;
@@ -35,14 +38,108 @@ size_t x11_find_id(char* name){
 	return 0;
 }
 
+static int x11_handle_window(display_t* display, Window w){
+	char* window_title = NULL;
+	int pid_format = 0;
+	unsigned long pid_items = 0, bytes_left = 0;
+	Atom pid_type;
+	XClassHint class_hints = {
+		0
+	};
+	pid_t* pid = NULL;
+
+	if(XGetWindowProperty(display->display_handle, w, display->net_wm_pid,
+			0, sizeof(pid) / 4, False, XA_CARDINAL,
+			&pid_type, &pid_format, &pid_items, &bytes_left,
+			(unsigned char**) &pid) != Success || pid_type != XA_CARDINAL){
+		//this should not have changed, but set it anyway
+		pid = NULL;
+		fprintf(stderr, "Failed to fetch PID for window %zu\n", w);
+	}
+	else if(bytes_left || pid_items != 1 || pid_format != 32){
+		fprintf(stderr, "PID not in expected format, %zu bytes and %zu items left, format %d\n", bytes_left, pid_items, pid_format);
+		if(pid){
+			XFree(pid);
+			pid = NULL;
+		}
+	}
+
+	if(!XFetchName(display->display_handle, w, &window_title)){
+		fprintf(stderr, "Failed to fetch window title for window %zu\n", w);
+		window_title = NULL;
+	}
+
+	if(!XGetClassHint(display->display_handle, w, &class_hints)){
+		fprintf(stderr, "Failed to fetch window class hints for window %zu\n", w);
+	}
+
+	//TODO hand over to command module
+	fprintf(stderr, "Now tracking window %zu, detected pid %d, title %s, class %s/%s\n",
+			w, pid ? *pid : 0, window_title ? window_title : "-none-",
+			class_hints.res_name ? class_hints.res_name : "-none-",
+			class_hints.res_class ? class_hints.res_class: "-none-");
+
+	if(pid){
+		XFree(pid);
+	}
+	if(window_title){
+		XFree(window_title);
+	}
+	if(class_hints.res_name){
+		XFree(class_hints.res_name);
+	}
+	if(class_hints.res_class){
+		XFree(class_hints.res_class);
+	}
+	return 0;
+}
+
 static int x11_handle_event(display_t* display, XEvent ev){
+	size_t u;
 	switch(ev.type){
 		case MapNotify:
-			fprintf(stderr, "Window %zu mapped on display %s\n", ev.xmap.window, display->identifier);
+			//on first map: gather matching info and pass to command module
+			for(u = 0; u < nwindows; u++){
+				if(windows[u].window == ev.xmap.window && windows[u].state == unconfigured){
+					windows[u].state = active;
+					return x11_handle_window(display, ev.xmap.window);
+				}
+			}
 			break;
-		case UnmapNotify:
-			fprintf(stderr, "Window %zu unmapped on display %s\n", ev.xunmap.window, display->identifier);
-			break;
+		case CreateNotify:
+			//add to set of tracked windows
+			for(u = 0; u < nwindows; u++){
+				if(windows[u].state == inactive){
+					break;
+				}
+			}
+
+			if(u == nwindows){
+				//no free entry, extend the array
+				windows = realloc(windows, (nwindows + 1) * sizeof(tracked_window_t));
+				if(!windows){
+					fprintf(stderr, "Failed to allocate memory\n");
+					nwindows = 0;
+					return 1;
+				}
+				nwindows++;
+			}
+
+			windows[u].state = unconfigured;
+			windows[u].window = ev.xcreatewindow.window;
+			return 0;
+		case DestroyNotify:
+			//remove from tracking set, notify command if configured
+			for(u = 0; u < nwindows; u++){
+				if(windows[u].window == ev.xdestroywindow.window){
+					if(windows[u].state == active){
+						//TODO notify command module
+					}
+					windows[u].state = inactive;
+					return 0;
+				}
+			}
+			fprintf(stderr, "Untracked window %zu destroyed on display %s\n", ev.xdestroywindow.window, display->identifier);
 	}
 	return 0;
 }
@@ -50,7 +147,6 @@ static int x11_handle_event(display_t* display, XEvent ev){
 static void x11_connection_watch(Display* dpy, XPointer data, int fd, Bool opening, XPointer* watch_data){
 	size_t u;
 	display_t* display = NULL;
-	fprintf(stderr, "watch called\n");
 
 	if(!data){
 		fprintf(stderr, "x11_connection_watch called with invalid display data\n");
@@ -423,6 +519,13 @@ int x11_config(char* option, char* value){
 		last->rp_command = XInternAtom(last->display_handle, "RP_COMMAND", True);
 		last->rp_command_request = XInternAtom(last->display_handle, "RP_COMMAND_REQUEST", True);
 		last->rp_command_result = XInternAtom(last->display_handle, "RP_COMMAND_RESULT", True);
+		last->net_wm_pid = XInternAtom(last->display_handle, "_NET_WM_PID", True);
+
+		//this might happen if rpcd is running in a non-ratpoison environment for some reason
+		if(last->net_wm_pid == None){
+			fprintf(stderr, "The current window manager does not seem to support the _NET_WM_PID protocol\n");
+			return 1;
+		}
 
 		//add connection watch function for fd updates
 		if(!XAddConnectionWatch(last->display_handle, x11_connection_watch, (XPointer) last)){
@@ -491,6 +594,10 @@ int x11_ok(){
 
 void x11_cleanup(){
 	size_t u;
+
+	free(windows);
+	windows = NULL;
+	nwindows = 0;
 
 	for(u = 0; u < ndisplays; u++){
 		x11_display_free(displays + u);
