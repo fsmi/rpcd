@@ -9,6 +9,7 @@
 #include "api.h"
 #include "x11.h"
 #include "config.h"
+#include "control.h"
 
 static enum {
 	conf_none,
@@ -83,7 +84,7 @@ int config_parse(char* cfg_file){
 			}
 			else if(!strncmp(line, "[command ", 9)){
 				line[strlen(line) - 1] = 0;
-				if(command_new(line + 9)){
+				if(command_new_user(line + 9)){
 					goto bail;
 				}
 				config_state = conf_command;
@@ -128,7 +129,7 @@ int config_parse(char* cfg_file){
 					}
 					break;
 				case conf_command:
-					if(command_config(line, argument)){
+					if(command_config_user(line, argument)){
 						goto bail;
 					}
 					break;
@@ -143,5 +144,5 @@ bail:
 	fclose(source);
 	free(line_raw);
 
-	return rv || command_ok() || layout_ok() || api_ok() || x11_ok();
+	return rv || command_ok() || control_ok() || layout_ok() || api_ok() || x11_ok();
 }

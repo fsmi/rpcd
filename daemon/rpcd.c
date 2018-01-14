@@ -64,6 +64,10 @@ int main(int argc, char** argv){
 			goto bail;
 		}
 
+		if(control_loop(&primary, &secondary, &max_fd)){
+			goto bail;
+		}
+
 		if(x11_loop(&primary, &secondary, &max_fd)){
 			goto bail;
 		}
