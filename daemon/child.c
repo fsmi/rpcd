@@ -31,6 +31,7 @@ int child_discard_restores(size_t display_id){
 }
 
 int child_stop(rpcd_child_t* child){
+	//FIXME this should reset the stack maximum index
 	//this happens when trying to stop a repatriated child
 	if(!child->instance){
 		child->state = stopped;
@@ -385,6 +386,12 @@ static void child_free(rpcd_child_t* child){
 
 int child_match_window(size_t display_id, Window window, pid_t pid, char* title, char* name, char* class){
 	//TODO this needs to properly set the stack order
+	
+	//recursively climb process tree to find a matching child
+	if(pid){
+	}
+
+	fprintf(stderr, "Failed to match window %zu (%d, %s, %s, %s) on display %zu to executing child\n", window, pid, title, name, class, display_id);
 	return 0;
 }
 
