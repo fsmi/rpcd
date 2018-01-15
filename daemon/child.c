@@ -13,6 +13,7 @@
 
 static size_t nchildren = 0;
 static rpcd_child_t* children = NULL;
+static size_t stack_max = 1; //repatriated windows get 0
 extern char** environ;
 
 int child_active(rpcd_child_t* child){
@@ -30,6 +31,12 @@ int child_discard_restores(size_t display_id){
 }
 
 int child_stop(rpcd_child_t* child){
+	//this happens when trying to stop a repatriated child
+	if(!child->instance){
+		child->state = stopped;
+		return 0;
+	}
+
 	switch(child->state){
 		case running:
 			//send SIGTERM to process group
@@ -224,6 +231,7 @@ rpcd_child_t* child_window_find(char* name){
 	size_t u;
 	for(u = 0; u < nchildren; u++){
 		if((children[u].mode != user && children[u].mode != user_no_windows)
+				&& children[u].name
 				&& !strcasecmp(name, children[u].name)){
 			return children + u;
 		}
@@ -367,6 +375,7 @@ static void child_free(rpcd_child_t* child){
 		free(child->args[u].additional);
 		free(child->args[u].name);
 	}
+	free(child->windows);
 	free(child->args);
 	free(child->command);
 	free(child->description);
@@ -375,22 +384,78 @@ static void child_free(rpcd_child_t* child){
 }
 
 int child_match_window(size_t display_id, Window window, pid_t pid, char* title, char* name, char* class){
-	//TODO
+	//TODO this needs to properly set the stack order
 	return 0;
 }
 
 int child_discard_window(size_t display_id, Window window){
-	//TODO
+	size_t u, c;
+
+	for(u = 0; u < nchildren; u++){
+		if(children[u].display_id == display_id
+				&& children[u].nwindows > 0){
+			for(c = 0; c < children[u].nwindows; c++){
+				if(children[u].windows[c] == window){
+					children[u].windows[c] = 0;
+
+					//re-sort window array
+					for(c++; c < children[u].nwindows; c++){
+						children[u].windows[c - 1] = children[u].windows[c];
+					}
+
+					fprintf(stderr, "Dismissed window %zu for command %s, %zu left\n", window, children[u].name ? children[u].name : "-repatriated-", children[u].nwindows);
+					children[u].nwindows--;
+					return 0;
+				}
+			}
+		}
+	}
+
+	fprintf(stderr, "Unmatched window %zu destroyed on display %zu\n", window, display_id);
 	return 0;
 }
 
 Window child_window(size_t display_id, size_t frame_id){
-	//TODO
-	return 0;
+	size_t u, stack_index = 0;
+	Window matched_window = 0;
+
+	for(u = 0; u < nchildren; u++){
+		if(children[u].display_id == display_id
+				&& children[u].frame_id == frame_id
+				&& children[u].state == running
+				&& children[u].nwindows > 0
+				&& children[u].order >= stack_index){
+			matched_window = children[u].windows[children[u].nwindows - 1];
+		}
+	}
+
+	return matched_window;
 }
 
 int child_repatriate(size_t display_id, size_t frame_id, Window window){
-	//TODO
+	children = realloc(children, (nchildren + 1) * sizeof(rpcd_child_t));
+	if(!children){
+		fprintf(stderr, "Failed to allocate memory\n");
+		nchildren = 0;
+		return 1;
+	}
+	child_init(children + nchildren);
+
+	//order implicitly set to 0
+	children[nchildren].windows = malloc(sizeof(Window));
+	if(!children[nchildren].windows){
+		fprintf(stderr, "Failed to allocate memory\n");
+		return 1;
+	}
+
+	children[nchildren].nwindows = 1;
+	children[nchildren].windows[0] = window;
+	children[nchildren].mode = repatriated;
+	children[nchildren].display_id = display_id;
+	children[nchildren].frame_id = frame_id;
+	children[nchildren].state = running;
+
+	nchildren++;
 	return 0;
 }
 
@@ -543,7 +608,9 @@ int child_ok(){
 
 	rpcd_child_t* last = children + (nchildren - 1);
 
-	if(!last->name || !last->command){
+	//repatriated windows have neither name or command set
+	if(last->mode != repatriated
+				&& (!last->name || !last->command)){
 		fprintf(stderr, "Command has no name or command specified\n");
 		return 1;
 	}
