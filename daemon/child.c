@@ -193,26 +193,15 @@ size_t child_command_count(){
 	return rv;
 }
 
-size_t child_window_count(){
-	size_t u, rv = 0;
-	for(u = 0; u < nchildren; u++){
-		if(children[u].mode != user && children[u].mode != user_no_windows){
-			rv++;
-		}
-	}
-	return rv;
-}
-
 rpcd_child_t* child_command_get(size_t index){
 	size_t u, c = 0;
-	for(u = 0; u < nchildren && c < index; u++){
+	for(u = 0; u < nchildren; u++){
 		if(children[u].mode == user || children[u].mode == user_no_windows){
+			if(c == index){
+				return children + u;
+			}
 			c++;
 		}
-	}
-
-	if(c == index){
-		return children + c;
 	}
 	return NULL;
 }

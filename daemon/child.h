@@ -68,7 +68,6 @@ Window child_window(size_t display_id, size_t frame_id);
 int child_repatriate(size_t display_id, size_t frame_id, Window window);
 
 size_t child_command_count();
-size_t child_window_count();
 rpcd_child_t* child_command_get(size_t index);
 rpcd_child_t* child_command_find(char* name);
 rpcd_child_t* child_window_find(char* name);
