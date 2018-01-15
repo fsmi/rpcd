@@ -1,6 +1,6 @@
 #include <X11/Xlib.h>
 
-typedef enum /*_command_arg_type_t*/ {
+typedef enum /*_user_command_arg_type_t*/ {
 	arg_string,
 	arg_enum
 } argument_type;
@@ -11,7 +11,7 @@ typedef enum /*_instance_state*/ {
 	terminated
 } instance_state;
 
-typedef struct /*_command_arg_t*/ {
+typedef struct /*_user_command_arg_t*/ {
 	char* name;
 	argument_type type;
 	char** additional;
@@ -51,30 +51,29 @@ typedef struct /*_rpcd_child_t*/ {
 	pid_t instance; /*process id*/
 } rpcd_child_t;
 
-typedef struct /*_command_instance_cfg*/ {
+typedef struct /*_user_command_instance_cfg*/ {
 	size_t restore_layout;
 	char** arguments;
 } command_instance_t;
 
-int command_active(rpcd_child_t* child);
-int command_discard_restores(size_t display_id);
-int command_run_user(rpcd_child_t* child, char* posted_json, size_t data_length);
-int command_stop(rpcd_child_t* child);
-int command_reap();
+int child_active(rpcd_child_t* child);
+int child_discard_restores(size_t display_id);
+int child_run_command(rpcd_child_t* child, char* posted_json, size_t data_length);
+int child_stop(rpcd_child_t* child);
+int child_reap();
 
-int command_match_window(size_t display_id, Window window, pid_t pid, char* title, char* res_name, char* res_class);
-int command_discard_window(size_t display_id, Window window);
-Window command_window(size_t display_id, size_t frame_id);
-int command_repatriate(size_t display_id, size_t frame_id, Window window);
+int child_match_window(size_t display_id, Window window, pid_t pid, char* title, char* res_name, char* res_class);
+int child_discard_window(size_t display_id, Window window);
+Window child_window(size_t display_id, size_t frame_id);
+int child_repatriate(size_t display_id, size_t frame_id, Window window);
 
-size_t command_user_count();
-size_t command_window_count();
-rpcd_child_t* command_user_get(size_t index);
-rpcd_child_t* command_user_find(char* name);
-rpcd_child_t* command_window_get(size_t index);
-rpcd_child_t* command_window_find(char* name);
+size_t child_command_count();
+size_t child_window_count();
+rpcd_child_t* child_command_get(size_t index);
+rpcd_child_t* child_command_find(char* name);
+rpcd_child_t* child_window_find(char* name);
 
-int command_new_user(char* name);
-int command_config_user(char* option, char* value);
-int command_ok();
-void command_cleanup();
+int child_new_command(char* name);
+int child_config_command(char* option, char* value);
+int child_ok();
+void child_cleanup();

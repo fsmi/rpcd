@@ -5,7 +5,7 @@
 
 #include "x11.h"
 #include "control.h"
-#include "command.h"
+#include "child.h"
 
 static int init_done = 0;
 
@@ -73,7 +73,7 @@ static int x11_handle_window(display_t* display, Window w){
 		fprintf(stderr, "Failed to fetch window class hints for window %zu\n", w);
 	}
 
-	rv = command_match_window(display - displays, w, pid ? *pid : 0, window_title, class_hints.res_name, class_hints.res_class);
+	rv = child_match_window(display - displays, w, pid ? *pid : 0, window_title, class_hints.res_name, class_hints.res_class);
 
 	if(pid){
 		XFree(pid);
@@ -129,7 +129,7 @@ static int x11_handle_event(display_t* display, XEvent ev){
 			for(u = 0; u < nwindows; u++){
 				if(windows[u].window == ev.xdestroywindow.window){
 					if(windows[u].state == active){
-						command_discard_window(display - displays, ev.xdestroywindow.window);
+						child_discard_window(display - displays, ev.xdestroywindow.window);
 					}
 					windows[u].state = inactive;
 					return 0;
@@ -294,7 +294,7 @@ static int x11_repatriate(size_t display_id){
 		frame_id = strtoul(strstr(frame, ":number") + 7, NULL, 10);
 		window = strtoul(strstr(frame, ":window") + 7, NULL, 10);
 
-		if(command_repatriate(display_id, frame_id, window)){
+		if(child_repatriate(display_id, frame_id, window)){
 			fprintf(stderr, "Failed to repatriate frame %zu\n", frame_id);
 			goto bail;
 		}
@@ -357,7 +357,7 @@ int x11_activate_layout(layout_t* layout){
 				layout->frames[frame].bbox[0], layout->frames[frame].bbox[1],
 				layout->frames[frame].bbox[2], layout->frames[frame].bbox[3],
 				layout->frames[frame].screen[0], layout->frames[frame].screen[1],
-				command_window(layout->display_id, layout->frames[frame].id),
+				child_window(layout->display_id, layout->frames[frame].id),
 				layout->frames[frame].screen[2]);
 
 		if(required < 0){
@@ -386,7 +386,7 @@ int x11_activate_layout(layout_t* layout){
 	rv = x11_run_command(display, layout_string, NULL);
 	display->current_layout = layout;
 	//stop commands from undoing the layout change
-	command_discard_restores(layout->display_id);
+	child_discard_restores(layout->display_id);
 bail:
 	free(layout_string);
 	return rv;

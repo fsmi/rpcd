@@ -8,18 +8,28 @@
 #include <signal.h>
 
 #include "x11.h"
-#include "command.h"
+#include "child.h"
 #include "../libs/easy_json.h"
 
 static size_t nchildren = 0;
 static rpcd_child_t* children = NULL;
 extern char** environ;
 
-int command_active(rpcd_child_t* child){
+int child_active(rpcd_child_t* child){
 	return child->state == running;
 }
 
-int command_stop(rpcd_child_t* child){
+int child_discard_restores(size_t display_id){
+	size_t u;
+	for(u = 0; u < nchildren; u++){
+		if(children[u].display_id == display_id){
+			children[u].restore_layout = 0;
+		}
+	}
+	return 0;
+}
+
+int child_stop(rpcd_child_t* child){
 	switch(child->state){
 		case running:
 			//send SIGTERM to process group
@@ -41,7 +51,7 @@ int command_stop(rpcd_child_t* child){
 	return 0;
 }
 
-int command_reap(){
+int child_reap(){
 	int wait_status;
 	pid_t status;
 	size_t u;
@@ -72,17 +82,7 @@ int command_reap(){
 	return 0;
 }
 
-int command_discard_restores(size_t display_id){
-	size_t u;
-	for(u = 0; u < nchildren; u++){
-		if(children[u].display_id == display_id){
-			children[u].restore_layout = 0;
-		}
-	}
-	return 0;
-}
-
-static void command_child(rpcd_child_t* child, command_instance_t* args){
+static void child_command_proc(rpcd_child_t* child, command_instance_t* args){
 	char* token = NULL, **argv = NULL, *replacement = NULL;
 	size_t nargs = 1, u, p;
 	display_t* display = NULL;
@@ -94,7 +94,6 @@ static void command_child(rpcd_child_t* child, command_instance_t* args){
 	}
 
 	//ensure that no user supplied argument is NULL
-	//FIXME for `window` children, this needs to user another variable space
 	for(u = 0; u < child->nargs; u++){
 		if(!args->arguments[u]){
 			args->arguments[u] = "";
@@ -159,12 +158,12 @@ static void command_child(rpcd_child_t* child, command_instance_t* args){
 	}
 }
 
-static int command_execute(rpcd_child_t* child, command_instance_t* args){
+static int child_execute(rpcd_child_t* child, command_instance_t* args){
 	child->instance = fork();
 	switch(child->instance){
 		case 0:
 			//FIXME might want to differentiate between child types here
-			command_child(child, args);
+			child_command_proc(child, args);
 			exit(EXIT_FAILURE);
 		case -1:
 			fprintf(stderr, "Failed to spawn off new process for command %s: %s\n", child->name, strerror(errno));
@@ -176,7 +175,7 @@ static int command_execute(rpcd_child_t* child, command_instance_t* args){
 	return 0;
 }
 
-size_t command_user_count(){
+size_t child_command_count(){
 	size_t u, rv = 0;
 	for(u = 0; u < nchildren; u++){
 		if(children[u].mode == user || children[u].mode == user_no_windows){
@@ -186,7 +185,7 @@ size_t command_user_count(){
 	return rv;
 }
 
-size_t command_window_count(){
+size_t child_window_count(){
 	size_t u, rv = 0;
 	for(u = 0; u < nchildren; u++){
 		if(children[u].mode != user && children[u].mode != user_no_windows){
@@ -196,7 +195,7 @@ size_t command_window_count(){
 	return rv;
 }
 
-rpcd_child_t* command_user_get(size_t index){
+rpcd_child_t* child_command_get(size_t index){
 	size_t u, c = 0;
 	for(u = 0; u < nchildren && c < index; u++){
 		if(children[u].mode == user || children[u].mode == user_no_windows){
@@ -210,7 +209,7 @@ rpcd_child_t* command_user_get(size_t index){
 	return NULL;
 }
 
-rpcd_child_t* command_user_find(char* name){
+rpcd_child_t* child_command_find(char* name){
 	size_t u;
 	for(u = 0; u < nchildren; u++){
 		if((children[u].mode == user || children[u].mode == user_no_windows)
@@ -221,7 +220,18 @@ rpcd_child_t* command_user_find(char* name){
 	return NULL;
 }
 
-static int command_verify_enum(argument_t* arg, char* value){
+rpcd_child_t* child_window_find(char* name){
+	size_t u;
+	for(u = 0; u < nchildren; u++){
+		if((children[u].mode != user && children[u].mode != user_no_windows)
+				&& !strcasecmp(name, children[u].name)){
+			return children + u;
+		}
+	}
+	return NULL;
+}
+
+static int child_verify_enum(argument_t* arg, char* value){
 	char** item = NULL;
 	for(item = arg->additional; *item; item++){
 		if(!strcasecmp(*item, value)){
@@ -233,7 +243,7 @@ static int command_verify_enum(argument_t* arg, char* value){
 	return 1;
 }
 
-static int command_parse_json(rpcd_child_t* command, command_instance_t* instance, ejson_struct* ejson) {
+static int child_parse_json(rpcd_child_t* command, command_instance_t* instance, ejson_struct* ejson) {
 	ejson_struct* display_info = ejson_find_key(ejson, "display", true);
 	ejson_struct* frame_info = ejson_find_key(ejson, "frame", true);
 	ejson_struct* fullscreen_info = ejson_find_key(ejson, "fullscreen", true);
@@ -295,7 +305,7 @@ static int command_parse_json(rpcd_child_t* command, command_instance_t* instanc
 					return 1;
 				}
 
-				if(cmd_arg->type == arg_enum && command_verify_enum(cmd_arg, instance->arguments[u])) {
+				if(cmd_arg->type == arg_enum && child_verify_enum(cmd_arg, instance->arguments[u])) {
 					fprintf(stderr, "Value of %s is not a valid for enum type\n", cmd_arg->name);
 					return 1;
 				}
@@ -306,7 +316,7 @@ static int command_parse_json(rpcd_child_t* command, command_instance_t* instanc
 	return 0;
 }
 
-int command_run_user(rpcd_child_t* command, char* data, size_t data_len){
+int child_run_command(rpcd_child_t* command, char* data, size_t data_len){
 	int rv = 1;
 	ejson_struct* ejson = NULL;
 	size_t u;
@@ -327,12 +337,12 @@ int command_run_user(rpcd_child_t* command, char* data, size_t data_len){
 
 	enum ejson_errors error = ejson_parse_warnings(&ejson, data, data_len, true, stderr);
 	if(error == EJSON_OK){
-		if(!command_parse_json(command, &instance, ejson)){
+		if(!child_parse_json(command, &instance, ejson)){
 			//debug variable set
 			for(u = 0; u < command->nargs; u++){
 				fprintf(stderr, "%s.%s -> %s\n", command->name, command->args[u].name, instance.arguments[u] ? instance.arguments[u] : "-null-");
 			}
-			rv = command_execute(command, &instance);
+			rv = child_execute(command, &instance);
 		}
 	}
 
@@ -341,14 +351,14 @@ int command_run_user(rpcd_child_t* command, char* data, size_t data_len){
 	return rv;
 }
 
-static void command_init(rpcd_child_t* child){
+static void child_init(rpcd_child_t* child){
 	rpcd_child_t empty = {
 		0
 	};
 	*child = empty;
 }
 
-static void command_free(rpcd_child_t* child){
+static void child_free(rpcd_child_t* child){
 	size_t u, p;
 	for(u = 0; u < child->nargs; u++){
 		for(p = 0; child->args[u].additional && child->args[u].additional[p]; p++){
@@ -361,30 +371,30 @@ static void command_free(rpcd_child_t* child){
 	free(child->command);
 	free(child->description);
 	free(child->name);
-	command_init(child);
+	child_init(child);
 }
 
-int command_match_window(size_t display_id, Window window, pid_t pid, char* title, char* name, char* class){
+int child_match_window(size_t display_id, Window window, pid_t pid, char* title, char* name, char* class){
 	//TODO
 	return 0;
 }
 
-int command_discard_window(size_t display_id, Window window){
+int child_discard_window(size_t display_id, Window window){
 	//TODO
 	return 0;
 }
 
-Window command_window(size_t display_id, size_t frame_id){
+Window child_window(size_t display_id, size_t frame_id){
 	//TODO
 	return 0;
 }
 
-int command_repatriate(size_t display_id, size_t frame_id, Window window){
+int child_repatriate(size_t display_id, size_t frame_id, Window window){
 	//TODO
 	return 0;
 }
 
-int command_new_user(char* name){
+int child_new_command(char* name){
 	size_t u;
 
 	for(u = 0; u < nchildren; u++){
@@ -402,7 +412,7 @@ int command_new_user(char* name){
 		return 1;
 	}
 
-	command_init(children + nchildren);
+	child_init(children + nchildren);
 	children[nchildren].name = strdup(name);
 	if(!children[nchildren].name){
 		fprintf(stderr, "Failed to allocate memory\n");
@@ -413,7 +423,7 @@ int command_new_user(char* name){
 	return 0;
 }
 
-int command_config_user(char* option, char* value){
+int child_config_command(char* option, char* value){
 	size_t u;
 	argument_type new_type = arg_string;
 	char* token = NULL;
@@ -524,7 +534,7 @@ int command_config_user(char* option, char* value){
 	return 0;
 }
 
-int command_ok(){
+int child_ok(){
 	size_t u;
 	if(!children){
 		fprintf(stderr, "No commands defined, continuing\n");
@@ -553,7 +563,7 @@ int command_ok(){
 	return 0;
 }
 
-void command_cleanup(){
+void child_cleanup(){
 	size_t u, done = 0;
 
 	//stop all executing instances
@@ -561,15 +571,15 @@ void command_cleanup(){
 		done = 1;
 		for(u = 0; u < nchildren; u++){
 			if(children[u].state != stopped){
-				command_stop(children + u);
+				child_stop(children + u);
 				done = 0;
 			}
 		}
-		command_reap();
+		child_reap();
 	}
 
 	for(u = 0; u < nchildren; u++){
-		command_free(children + u);
+		child_free(children + u);
 	}
 	free(children);
 	nchildren = 0;

@@ -12,7 +12,7 @@
 #include <fcntl.h>
 
 #include "x11.h"
-#include "command.h"
+#include "child.h"
 #include "api.h"
 
 static int listen_fd = -1;
@@ -235,13 +235,13 @@ static int api_handle_header(http_client_t* client){
 
 static int api_send_commands(http_client_t* client){
 	char send_buf[RECV_CHUNK];
-	size_t commands = command_user_count(), u, p;
+	size_t commands = child_command_count(), u, p;
 	char** option = NULL;
 	rpcd_child_t* command = NULL;
 
 	network_send(client->fd, "[");
 	for(u = 0; u < commands; u++){
-		command = command_user_get(u);
+		command = child_command_get(u);
 
 		//dump a command
 		//FIXME escaping
@@ -350,7 +350,7 @@ static int api_send_status(http_client_t* client){
 	layout_t* layout = NULL;
 
 	snprintf(send_buf, sizeof(send_buf), "{\"layouts\":%zu,\"commands\":%zu,\"layout\":[",
-			layout_count(), command_user_count());
+			layout_count(), child_command_count());
 	rv |= network_send(client->fd, send_buf);
 
 	n = x11_count();
@@ -365,9 +365,9 @@ static int api_send_status(http_client_t* client){
 	}
 
 	rv |= network_send(client->fd, "],\"running\":[");
-	n = command_user_count();
+	n = child_command_count();
 	for(u = 0; u < n; u++){
-		cmd = command_user_get(u);
+		cmd = child_command_get(u);
 		if(cmd->state != stopped){
 			snprintf(send_buf, sizeof(send_buf), "%s\"%s\"",
 					first ? "" : ",", cmd->name);
@@ -399,14 +399,14 @@ static int api_handle_body(http_client_t* client){
 			|| api_send_status(client);
 	}
 	else if(!strncmp(client->endpoint, "/stop/", 6)){
-		rpcd_child_t* command = command_user_find(client->endpoint + 6);
+		rpcd_child_t* command = child_command_find(client->endpoint + 6);
 		if(!command){
 			api_send_header(client, "400 No such command", false);
 		}
-		else if(!command_active(command)){
+		else if(!child_active(command)){
 			api_send_header(client, "500 Not running", false);
 		}
-		else if(command_stop(command)){
+		else if(child_stop(command)){
 			api_send_header(client, "500 Failed to stop", false);
 		}
 		else{
@@ -436,14 +436,14 @@ static int api_handle_body(http_client_t* client){
 		}
 	}
 	else if(!strncmp(client->endpoint, "/command/", 9)){
-		rpcd_child_t* command = command_user_find(client->endpoint + 9);
+		rpcd_child_t* command = child_command_find(client->endpoint + 9);
 		if(!command){
 			api_send_header(client, "400 No such command", false);
 		}
-		else if(command_active(command)){
+		else if(child_active(command)){
 			api_send_header(client, "500 Already running", false);
 		}
-		else if(command_run_user(command, client->recv_buf, client->payload_size)){
+		else if(child_run_command(command, client->recv_buf, client->payload_size)){
 			api_send_header(client, "500 Failed to start", false);
 		}
 		else{
