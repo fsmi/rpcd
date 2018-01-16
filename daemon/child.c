@@ -42,18 +42,18 @@ int child_stop(rpcd_child_t* child){
 		case running:
 			//send SIGTERM to process group
 			if(kill(-child->instance, SIGTERM)){
-				fprintf(stderr, "Failed to terminate command %s: %s\n", child->name, strerror(errno));
+				fprintf(stderr, "Failed to terminate child %s: %s\n", child->name, strerror(errno));
 			}
 			child->state = terminated;
 			break;
 		case terminated:
 			//if that didnt help, send SIGKILL
 			if(kill(-child->instance, SIGKILL)){
-				fprintf(stderr, "Failed to terminate command %s: %s\n", child->name, strerror(errno));
+				fprintf(stderr, "Failed to terminate child %s: %s\n", child->name, strerror(errno));
 			}
 			break;
 		case stopped:
-			fprintf(stderr, "Command %s not running, not stopping\n", child->name);
+			fprintf(stderr, "Child %s not running, not stopping\n", child->name);
 			break;
 	}
 	return 0;
@@ -241,7 +241,7 @@ static int child_verify_enum(argument_t* arg, char* value){
 	return 1;
 }
 
-static int command_parse_json(rpcd_child_t* command, command_instance_t* instance, ejson_object* ejson) {
+static int child_parse_json(rpcd_child_t* command, command_instance_t* instance, ejson_object* ejson) {
 	ejson_array* args = (ejson_array*) ejson_find_by_key(ejson, "arguments", false, false);
 	size_t u;
 	argument_t* cmd_arg;
@@ -342,7 +342,7 @@ int child_run_command(rpcd_child_t* command, char* data, size_t data_len){
 
 	enum ejson_errors error = ejson_parse_warnings(data, data_len, true, stderr, &ejson);
 	if(error == EJSON_OK && ejson->type == EJSON_OBJECT){
-		if(!command_parse_json(command, &instance, (ejson_object*) ejson)){
+		if(!child_parse_json(command, &instance, (ejson_object*) ejson)){
 			//debug variable set
 			for(u = 0; u < command->nargs; u++){
 				fprintf(stderr, "%s.%s -> %s\n", command->name, command->args[u].name, instance.arguments[u] ? instance.arguments[u] : "-null-");
@@ -605,7 +605,7 @@ int child_config_command(char* option, char* value){
 int child_ok(){
 	size_t u;
 	if(!children){
-		fprintf(stderr, "No commands defined, continuing\n");
+		fprintf(stderr, "No children defined, continuing\n");
 		return 0;
 	}
 
@@ -614,13 +614,13 @@ int child_ok(){
 	//repatriated windows have neither name or command set
 	if(last->mode != repatriated
 				&& (!last->name || !last->command)){
-		fprintf(stderr, "Command has no name or command specified\n");
+		fprintf(stderr, "Child definition has no name or command specified\n");
 		return 1;
 	}
 
 	for(u = 0; u < last->nargs; u++){
 		if(!last->args[u].name){
-			fprintf(stderr, "Argument to command %s has no name\n", last->name);
+			fprintf(stderr, "User argument to command %s has no name\n", last->name);
 			return 1;
 		}
 
