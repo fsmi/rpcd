@@ -207,49 +207,45 @@ static int command_verify_enum(argument_t* arg, char* value){
 	return 1;
 }
 
-static int command_parse_json(command_t* command, command_instance_t* instance, ejson_struct* ejson) {
-	ejson_struct* display_info = ejson_find_key(ejson, "display", true);
-	ejson_struct* frame_info = ejson_find_key(ejson, "frame", true);
-	ejson_struct* fullscreen_info = ejson_find_key(ejson, "fullscreen", true);
-	ejson_struct* args = ejson_find_key(ejson, "arguments", true);
-	ejson_struct* arg;
+static int command_parse_json(command_t* command, command_instance_t* instance, ejson_object* ejson) {
+	ejson_array* args = (ejson_array*) ejson_find_by_key(ejson, "arguments", false, false);
 	size_t u;
 	argument_t* cmd_arg;
+	int err;
 
 	if(command->windows){
-		if(display_info){
-			char* display_name = NULL;
-			if(ejson_get_string(display_info, &display_name) != EJSON_OK){
-				fprintf(stderr, "Failed to parse display parameter\n");
-				return 1;
-			}
-
-			command->display_id = x11_find_id(display_name);
-		}
-		else{
+		char* display_name = NULL;
+		err = ejson_get_string_from_key(ejson, "display", false, false, &display_name);
+		if (err == EJSON_KEY_NOT_FOUND) {
 			fprintf(stderr, "No display provided for command, using default display\n");
 			command->display_id = 0;
+		} else if (err == EJSON_OK) {
+			command->display_id = x11_find_id(display_name);
+		} else {
+			fprintf(stderr, "Failed to parse display parameter\n");
+			return 1;
 		}
 
-		if(frame_info){
-			int frame_id = -1;
-			if(ejson_get_int(frame_info, &frame_id) != EJSON_OK){
-				fprintf(stderr, "Failed to parse frame parameter\n");
-			}
-			else{
-				x11_select_frame(command->display_id, frame_id);
-			}
+		int frame_id = -1;
+		err = ejson_get_int_from_key(ejson, "frame", false, false, &frame_id);
+		if (err == EJSON_OK){
+			x11_select_frame(command->display_id, frame_id);
+		} else if (EJSON_KEY_NOT_FOUND) {
+			fprintf(stderr, "No frame provided for command, using active one\n");
+		} else {
+			fprintf(stderr, "Failed to parse frame parameter\n");
 		}
 
-		if(fullscreen_info){
-			int fullscreen = 0;
-			if(ejson_get_int(fullscreen_info, &fullscreen) != EJSON_OK) {
-				fprintf(stderr, "Failed to parse fullscreen parameter\n");
-			}
-			else if(fullscreen){
-				x11_fullscreen(command->display_id);
-				instance->restore_layout = 1;
-			}
+		int fullscreen = 0;
+		err = ejson_get_int_from_key(ejson, "fullscreen", false, false, &fullscreen);
+		if (err == EJSON_KEY_NOT_FOUND) {
+			fprintf(stderr, "No fullscreen parameter provided, using off\n");
+		} else if (err != EJSON_OK) {
+			fprintf(stderr, "Failed to parse fullscreen parameter\n");
+		}
+		else if(fullscreen){
+			x11_fullscreen(command->display_id);
+			instance->restore_layout = 1;
 		}
 	}
 
@@ -258,12 +254,24 @@ static int command_parse_json(command_t* command, command_instance_t* instance, 
 			fprintf(stderr, "No arguments supplied\n");
 			return 1;
 		}
+
+		if (args->base.type != EJSON_ARRAY) {
+			fprintf(stderr, "Arguments is not an array.\n");
+			return 1;
+		}
+		int j;
 		for (u = 0; u < command->nargs; u++) {
 			cmd_arg = command->args + u;
-			//FIXME this needs to compare the key in a case-insensitive manner
-			arg = ejson_find_key(args, cmd_arg->name, true);
-			if(arg){
-				if (ejson_get_string(arg, &instance->arguments[u]) != EJSON_OK) {
+			for (j = 0; j < args->length; j++) {
+
+				if (args->values[j]->type != EJSON_OBJECT) {
+					continue;
+				}
+
+				err = ejson_get_string_from_key((ejson_object*) args->values[j], cmd_arg->name, true, false, &instance->arguments[u]);
+				if (err == EJSON_KEY_NOT_FOUND) {
+					continue;
+				} else if (err != EJSON_OK) {
 					fprintf(stderr, "Failed to fetch assigned value for argument %s\n", cmd_arg->name);
 					return 1;
 				}
@@ -281,7 +289,7 @@ static int command_parse_json(command_t* command, command_instance_t* instance, 
 
 int command_run(command_t* command, char* data, size_t data_len){
 	int rv = 1;
-	ejson_struct* ejson = NULL;
+	ejson_base* ejson = NULL;
 	size_t u;
 	command_instance_t instance = {
 		.arguments = calloc(command->nargs, sizeof(char*))
@@ -298,9 +306,9 @@ int command_run(command_t* command, char* data, size_t data_len){
 		return 1;
 	}
 
-	enum ejson_errors error = ejson_parse_warnings(&ejson, data, data_len, true, stderr);
-	if(error == EJSON_OK){
-		if(!command_parse_json(command, &instance, ejson)){
+	enum ejson_errors error = ejson_parse_warnings(data, data_len, true, stderr, &ejson);
+	if(error == EJSON_OK && ejson->type == EJSON_OBJECT){
+		if(!command_parse_json(command, &instance, (ejson_object*) ejson)){
 			//debug variable set
 			for(u = 0; u < command->nargs; u++){
 				fprintf(stderr, "%s.%s -> %s\n", command->name, command->args[u].name, instance.arguments[u] ? instance.arguments[u] : "-null-");
