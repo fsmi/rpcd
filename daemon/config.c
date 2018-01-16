@@ -5,10 +5,11 @@
 #include <errno.h>
 
 #include "layout.h"
-#include "command.h"
+#include "child.h"
 #include "api.h"
 #include "x11.h"
 #include "config.h"
+#include "control.h"
 
 static enum {
 	conf_none,
@@ -58,7 +59,7 @@ int config_parse(char* cfg_file){
 			//sanity check
 			
 			if((config_state == conf_layout && layout_ok())
-					|| (config_state == conf_command && command_ok())
+					|| (config_state == conf_command && child_ok())
 					|| (config_state == conf_x11 && x11_ok())){
 				fprintf(stderr, "%s:%zu Cannot switch section before the previous configuration is done\n", cfg_file, line_no);
 				goto bail;
@@ -83,7 +84,7 @@ int config_parse(char* cfg_file){
 			}
 			else if(!strncmp(line, "[command ", 9)){
 				line[strlen(line) - 1] = 0;
-				if(command_new(line + 9)){
+				if(child_new_command(line + 9)){
 					goto bail;
 				}
 				config_state = conf_command;
@@ -128,7 +129,7 @@ int config_parse(char* cfg_file){
 					}
 					break;
 				case conf_command:
-					if(command_config(line, argument)){
+					if(child_config_command(line, argument)){
 						goto bail;
 					}
 					break;
@@ -143,5 +144,5 @@ bail:
 	fclose(source);
 	free(line_raw);
 
-	return rv || command_ok() || layout_ok() || api_ok() || x11_ok();
+	return rv || child_ok() || control_ok() || layout_ok() || api_ok() || x11_ok();
 }

@@ -7,7 +7,7 @@
 #include "rpcd.h"
 #include "config.h"
 
-#include "command.h"
+#include "child.h"
 #include "x11.h"
 #include "layout.h"
 #include "api.h"
@@ -64,6 +64,10 @@ int main(int argc, char** argv){
 			goto bail;
 		}
 
+		if(control_loop(&primary, &secondary, &max_fd)){
+			goto bail;
+		}
+
 		if(x11_loop(&primary, &secondary, &max_fd)){
 			goto bail;
 		}
@@ -84,7 +88,7 @@ int main(int argc, char** argv){
 		}
 
 		if(pid_signaled){
-			if(command_reap()){
+			if(child_reap()){
 				goto bail;
 			}
 			pid_signaled = 0;
@@ -104,7 +108,7 @@ bail:
 	api_cleanup();
 	x11_cleanup();
 	layout_cleanup();
-	command_cleanup();
+	child_cleanup();
 	control_cleanup();
 	return rv;
 }

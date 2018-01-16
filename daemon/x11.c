@@ -5,7 +5,7 @@
 
 #include "x11.h"
 #include "control.h"
-#include "command.h"
+#include "child.h"
 
 static int init_done = 0;
 
@@ -40,7 +40,7 @@ size_t x11_find_id(char* name){
 
 static int x11_handle_window(display_t* display, Window w){
 	char* window_title = NULL;
-	int pid_format = 0;
+	int pid_format = 0, rv = 0;
 	unsigned long pid_items = 0, bytes_left = 0;
 	Atom pid_type;
 	XClassHint class_hints = {
@@ -73,11 +73,7 @@ static int x11_handle_window(display_t* display, Window w){
 		fprintf(stderr, "Failed to fetch window class hints for window %zu\n", w);
 	}
 
-	//TODO hand over to command module
-	fprintf(stderr, "Now tracking window %zu, detected pid %d, title %s, class %s/%s\n",
-			w, pid ? *pid : 0, window_title ? window_title : "-none-",
-			class_hints.res_name ? class_hints.res_name : "-none-",
-			class_hints.res_class ? class_hints.res_class: "-none-");
+	rv = child_match_window(display - displays, w, pid ? *pid : 0, window_title, class_hints.res_name, class_hints.res_class);
 
 	if(pid){
 		XFree(pid);
@@ -91,7 +87,7 @@ static int x11_handle_window(display_t* display, Window w){
 	if(class_hints.res_class){
 		XFree(class_hints.res_class);
 	}
-	return 0;
+	return rv;
 }
 
 static int x11_handle_event(display_t* display, XEvent ev){
@@ -133,7 +129,7 @@ static int x11_handle_event(display_t* display, XEvent ev){
 			for(u = 0; u < nwindows; u++){
 				if(windows[u].window == ev.xdestroywindow.window){
 					if(windows[u].state == active){
-						//TODO notify command module
+						child_discard_window(display - displays, ev.xdestroywindow.window);
 					}
 					windows[u].state = inactive;
 					return 0;
@@ -298,7 +294,7 @@ static int x11_repatriate(size_t display_id){
 		frame_id = strtoul(strstr(frame, ":number") + 7, NULL, 10);
 		window = strtoul(strstr(frame, ":window") + 7, NULL, 10);
 
-		if(control_repatriate(display_id, frame_id, window)){
+		if(child_repatriate(display_id, frame_id, window)){
 			fprintf(stderr, "Failed to repatriate frame %zu\n", frame_id);
 			goto bail;
 		}
@@ -361,7 +357,7 @@ int x11_activate_layout(layout_t* layout){
 				layout->frames[frame].bbox[0], layout->frames[frame].bbox[1],
 				layout->frames[frame].bbox[2], layout->frames[frame].bbox[3],
 				layout->frames[frame].screen[0], layout->frames[frame].screen[1],
-				control_get_window(layout->display_id, layout->frames[frame].id),
+				child_window(layout->display_id, layout->frames[frame].id),
 				layout->frames[frame].screen[2]);
 
 		if(required < 0){
@@ -390,7 +386,7 @@ int x11_activate_layout(layout_t* layout){
 	rv = x11_run_command(display, layout_string, NULL);
 	display->current_layout = layout;
 	//stop commands from undoing the layout change
-	command_discard_restores(layout->display_id);
+	child_discard_restores(layout->display_id);
 bail:
 	free(layout_string);
 	return rv;
