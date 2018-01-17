@@ -226,7 +226,7 @@ int layout_config(char* option, char* value){
 				return 1;
 			}
 
-			rv = layout_parse(read_layout, strlen(read_layout), last);
+			rv = layout_parse(read_layout, read_layout ? strlen(read_layout) : 0, last);
 
 			free(read_layout);
 			return rv;
