@@ -182,7 +182,7 @@ int parse_state_layout(Config* config, ejson_array* root) {
 
 		err = ejson_get_string_from_key((ejson_object*)root->values[i], "layout", false, false, &name);
 
-		if (err != EJSON_KEY_NOT_FOUND) {
+		if (err == EJSON_KEY_NOT_FOUND) {
 			continue;
 		} else if (err != EJSON_OK) {
 			fprintf(stderr, "Server response format invalid: missing key\n");
@@ -190,7 +190,7 @@ int parse_state_layout(Config* config, ejson_array* root) {
 		}
 
 		err = ejson_get_string_from_key((ejson_object*) root->values[i], "display", false, false, &display);
-		if (err != EJSON_KEY_NOT_FOUND) {
+		if (err == EJSON_KEY_NOT_FOUND) {
 			printf("%s ", name);
 		} else if (err != EJSON_OK) {
 			fprintf(stderr, "Server response format invalid: missing key\n");
