@@ -289,31 +289,23 @@ static int child_parse_json(rpcd_child_t* command, command_instance_t* instance,
 			return 1;
 		}
 
-		if (args->base.type != EJSON_ARRAY) {
-			fprintf(stderr, "Arguments is not an array.\n");
+		if (args->base.type != EJSON_OBJECT) {
+			fprintf(stderr, "Arguments is not an object.\n");
 			return 1;
 		}
-		int j;
 		for (u = 0; u < command->nargs; u++) {
 			cmd_arg = command->args + u;
-			for (j = 0; j < args->length; j++) {
+			err = ejson_get_string_from_key((ejson_object*) args, cmd_arg->name, true, false, &instance->arguments[u]);
+			if (err == EJSON_KEY_NOT_FOUND) {
+				continue;
+			} else if (err != EJSON_OK) {
+				fprintf(stderr, "Failed to fetch assigned value for argument %s\n", cmd_arg->name);
+				return 1;
+			}
 
-				if (args->values[j]->type != EJSON_OBJECT) {
-					continue;
-				}
-
-				err = ejson_get_string_from_key((ejson_object*) args->values[j], cmd_arg->name, true, false, &instance->arguments[u]);
-				if (err == EJSON_KEY_NOT_FOUND) {
-					continue;
-				} else if (err != EJSON_OK) {
-					fprintf(stderr, "Failed to fetch assigned value for argument %s\n", cmd_arg->name);
-					return 1;
-				}
-
-				if(cmd_arg->type == arg_enum && child_verify_enum(cmd_arg, instance->arguments[u])) {
-					fprintf(stderr, "Value of %s is not a valid for enum type\n", cmd_arg->name);
-					return 1;
-				}
+			if(cmd_arg->type == arg_enum && child_verify_enum(cmd_arg, instance->arguments[u])) {
+				fprintf(stderr, "Value of %s is not a valid for enum type\n", cmd_arg->name);
+				return 1;
 			}
 		}
 	}
