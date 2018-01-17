@@ -387,6 +387,7 @@ static pid_t child_parent(pid_t pid){
 	FILE* stat_file = NULL;
 	char* pid_info = NULL;
 	char* ppid = NULL;
+	size_t bytes_read = 0;
 
 	snprintf(stat_path, sizeof(stat_path), "/proc/%d/stat", pid);
 	stat_file = fopen(stat_path, "r");
@@ -402,7 +403,10 @@ static pid_t child_parent(pid_t pid){
 			goto done;
 		}
 
-		if(fread(pid_info + (chunks * PATH_MAX), PATH_MAX, 1, stat_file) != 1){
+		bytes_read += fread(pid_info + (chunks * PATH_MAX), 1, PATH_MAX, stat_file);
+		if(bytes_read % PATH_MAX){
+			//terminate string
+			pid_info[bytes_read] = 0;
 			break;
 		}
 
@@ -461,21 +465,21 @@ int child_match_window(size_t display_id, Window window, pid_t pid, char* title,
 						}
 						break;
 					case match_title:
-						if(children[u].filters[0] &&
+						if(title && children[u].filters[0] &&
 								!strcmp(children[u].filters[0], title)){
 							matched = 1;
 							continue;
 						}
 						break;
 					case match_name:
-						if(children[u].filters[1] &&
+						if(name && children[u].filters[1] &&
 								!strcmp(children[u].filters[0], name)){
 							matched = 1;
 							continue;
 						}
 						break;
 					case match_class:
-						if(children[u].filters[2] &&
+						if(class && children[u].filters[2] &&
 								!strcmp(children[u].filters[2], class)){
 							matched = 1;
 							continue;
