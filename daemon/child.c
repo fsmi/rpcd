@@ -6,8 +6,6 @@
 #include <sys/wait.h>
 #include <errno.h>
 #include <signal.h>
-#include <unistd.h>
-#include <sys/stat.h>
 #include <limits.h>
 
 #include "x11.h"
@@ -463,7 +461,6 @@ int child_match_window(size_t display_id, Window window, pid_t pid, char* title,
 		for(u = 0; u < nchildren && !matched; u++){
 			if(children[u].state == running
 					&& children[u].display_id == display_id){
-				fprintf(stderr, "Testing %zu strategy %zu matched %zu\n", u, strategy, matched);
 				switch(strategy){
 					case match_pid:
 						if(children[u].instance == current_pid){
