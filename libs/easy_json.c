@@ -474,7 +474,6 @@ ejson_bool* ejson_parse_bool(ejson_state* state) {
 		free(elem);
 		return NULL;
 	}
-	printf("pos: %ld, len: %ld\n", state->pos, state->len);
 	if (state->pos + 3 < state->len && !strncmp(state->data + state->pos, "true", 4)) {
 		elem->value = 1;
 		state->pos += 4;
@@ -590,7 +589,6 @@ ejson_base* ejson_parse_number(ejson_state* state) {
 
 	state->pos = state->pos + (end - number);
 	free(number);
-	printf("pos: %ld, len: %ld\n", state->pos, state->len);
 	return root;
 }
 
