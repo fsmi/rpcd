@@ -6,6 +6,9 @@
 #include <sys/wait.h>
 #include <errno.h>
 #include <signal.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <limits.h>
 
 #include "x11.h"
 #include "child.h"
@@ -13,7 +16,6 @@
 
 static size_t nchildren = 0;
 static rpcd_child_t* children = NULL;
-static size_t stack_max = 1; //repatriated windows get 0
 extern char** environ;
 
 int child_active(rpcd_child_t* child){
@@ -380,11 +382,150 @@ static void child_free(rpcd_child_t* child){
 	child_init(child);
 }
 
+static pid_t child_parent(pid_t pid){
+	//weirdly, there is no proper API for this kind of thing (getting the parent pid of an arbitrary process).
+	//man proc tells us to read it from /proc/<pid>/stat, which only works under linux
+	//in addition, the format within that file is massively broken - the manpage tells us to scan the
+	//executable name (which precedes the ppid, or else i wouldnt actually care) using the %s escape code,
+	//which simply does not work with executable names containing spaces. tokenizing along parentheses is
+	//a bad idea for the same reason. this problem actually breaks multiple tools doing the same thing.
+	//for now, just scan the whole file and search for the _last_ closing parenthesis, which should hopefully
+	//be the one terminating the executable name
+	pid_t rv = 0;
+	char stat_path[PATH_MAX];
+	size_t chunks = 0;
+	FILE* stat_file = NULL;
+	char* pid_info = NULL;
+	char* ppid = NULL;
+
+	snprintf(stat_path, sizeof(stat_path), "/proc/%d/stat", pid);
+	stat_file = fopen(stat_path, "r");
+	if(!stat_file){
+		fprintf(stderr, "Failed to open %s for reading: %s\n", stat_path, strerror(errno));
+		goto done;
+	}
+
+	while(!feof(stat_file)){
+		pid_info = realloc(pid_info, (chunks + 1) * PATH_MAX);
+		if(!pid_info){
+			fprintf(stderr, "Failed to allocate memory\n");
+			goto done;
+		}
+
+		if(fread(pid_info + (chunks * PATH_MAX), PATH_MAX, 1, stat_file) != 1){
+			break;
+		}
+
+		chunks++;
+	}
+
+	ppid = strrchr(pid_info, ')');
+	if(!ppid){
+		fprintf(stderr, "File %s malformed\n", stat_path);
+		goto done;
+	}
+
+	//separator after image name
+	for(; *ppid && ppid[0] != ' '; ppid++){
+	}
+
+	if(!*ppid){
+		fprintf(stderr, "File %s malformed: short read\n", stat_path);
+		goto done;
+	}
+	ppid++;
+
+	//separator after process status
+	for(; *ppid && ppid[0] != ' '; ppid++){
+	}
+
+	rv = strtol(ppid, NULL, 10);
+done:
+	if(stat_file){
+		fclose(stat_file);
+	}
+	free(pid_info);
+	return rv;
+}
+
 int child_match_window(size_t display_id, Window window, pid_t pid, char* title, char* name, char* class){
-	//TODO this needs to properly set the stack order
-	
-	//recursively climb process tree to find a matching child
-	if(pid){
+	pid_t current_pid = pid;
+	size_t u, matched = 0;
+	enum {
+		match_pid = 0,
+		match_title,
+		match_name,
+		match_class,
+		done
+	} strategy = pid ? match_pid : match_title; //skip pid match if not available
+
+	for(; strategy < done; strategy++){
+		for(u = 0; u < nchildren && !matched; u++){
+			if(children[u].state == running
+					&& children[u].display_id == display_id){
+				fprintf(stderr, "Testing %zu strategy %zu matched %zu\n", u, strategy, matched);
+				switch(strategy){
+					case match_pid:
+						if(children[u].instance == current_pid){
+							matched = 1;
+							continue;
+						}
+						break;
+					case match_title:
+						if(children[u].filters[0] &&
+								!strcmp(children[u].filters[0], title)){
+							matched = 1;
+							continue;
+						}
+						break;
+					case match_name:
+						if(children[u].filters[1] &&
+								!strcmp(children[u].filters[0], name)){
+							matched = 1;
+							continue;
+						}
+						break;
+					case match_class:
+						if(children[u].filters[2] &&
+								!strcmp(children[u].filters[2], class)){
+							matched = 1;
+							continue;
+						}
+						break;
+					case done:
+						fprintf(stderr, "Window matching reached invalid strategy\n");
+						break;
+				}
+			}
+
+		}
+
+		if(matched){
+			u--;
+			break;
+		}
+
+		if(strategy == match_pid && current_pid > 1){
+			current_pid = child_parent(current_pid);
+			strategy--;
+			continue;
+		}
+	}
+
+	if(matched){
+		children[u].windows = realloc(children[u].windows, (children[u].nwindows + 1) * sizeof(Window));
+		if(!children[u].windows){
+			children[u].nwindows = 0;
+			fprintf(stderr, "Failed to allocate memory\n");
+			return 1;
+		}
+		children[u].windows[children[u].nwindows] = window;
+		children[u].nwindows++;
+
+		fprintf(stderr, "Matched window %zu (%d, %s, %s, %s) on display %zu to child %zu (%s) using strategy %u, now at %zu windows\n",
+				window, pid, title ? title : "-none-", name ? name : "-none-",
+				class ? class : "-none-", display_id, u, children[u].name, strategy, children[u].nwindows);
+		return 0;
 	}
 
 	fprintf(stderr, "Failed to match window %zu (%d, %s, %s, %s) on display %zu to executing child\n", window, pid, title, name, class, display_id);
@@ -406,8 +547,8 @@ int child_discard_window(size_t display_id, Window window){
 						children[u].windows[c - 1] = children[u].windows[c];
 					}
 
-					fprintf(stderr, "Dismissed window %zu for command %s, %zu left\n", window, children[u].name ? children[u].name : "-repatriated-", children[u].nwindows);
 					children[u].nwindows--;
+					fprintf(stderr, "Dismissed window %zu for command %s, %zu left\n", window, children[u].name ? children[u].name : "-repatriated-", children[u].nwindows);
 					return 0;
 				}
 			}
