@@ -494,6 +494,12 @@ int parse_commands(Config* config, struct netdata* data) {
 		}
 
 		args = (ejson_array*) ejson_find_by_key(elem, "args", false, false);
+
+		if (!args) {
+			fprintf(stderr, "No arguments found.\n");
+			continue;
+		}
+
 		if (args->base.type != EJSON_ARRAY) {
 			fprintf(stderr, "Args is not an array.\n");
 			ejson_cleanup((ejson_base*) ejson);
