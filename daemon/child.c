@@ -405,13 +405,13 @@ static pid_t child_parent(pid_t pid){
 
 		bytes_read += fread(pid_info + (chunks * PATH_MAX), 1, PATH_MAX, stat_file);
 		if(bytes_read % PATH_MAX){
-			//terminate string
-			pid_info[bytes_read] = 0;
 			break;
 		}
 
 		chunks++;
 	}
+	//terminate string - actually, this eliminates the last read byte, too, but we dont really care
+	pid_info[bytes_read] = 0;
 
 	ppid = strrchr(pid_info, ')');
 	if(!ppid){
