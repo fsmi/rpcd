@@ -90,15 +90,15 @@ static int x11_handle_window(display_t* display, Window w){
 	return rv;
 }
 
-static int x11_handle_event(display_t* display, XEvent ev){
+static int x11_handle_event(display_t* display, XEvent* ev){
 	size_t u;
-	switch(ev.type){
+	switch(ev->type){
 		case MapNotify:
 			//on first map: gather matching info and pass to command module
 			for(u = 0; u < nwindows; u++){
-				if(windows[u].window == ev.xmap.window && windows[u].state == unconfigured){
+				if(windows[u].window == ev->xmap.window && windows[u].state == unconfigured){
 					windows[u].state = active;
-					return x11_handle_window(display, ev.xmap.window);
+					return x11_handle_window(display, ev->xmap.window);
 				}
 			}
 			break;
@@ -122,20 +122,20 @@ static int x11_handle_event(display_t* display, XEvent ev){
 			}
 
 			windows[u].state = unconfigured;
-			windows[u].window = ev.xcreatewindow.window;
+			windows[u].window = ev->xcreatewindow.window;
 			return 0;
 		case DestroyNotify:
 			//remove from tracking set, notify command if configured
 			for(u = 0; u < nwindows; u++){
-				if(windows[u].window == ev.xdestroywindow.window){
+				if(windows[u].window == ev->xdestroywindow.window){
 					if(windows[u].state == active){
-						child_discard_window(display - displays, ev.xdestroywindow.window);
+						child_discard_window(display - displays, ev->xdestroywindow.window);
 					}
 					windows[u].state = inactive;
 					return 0;
 				}
 			}
-			fprintf(stderr, "Untracked window %zu destroyed on display %s\n", ev.xdestroywindow.window, display->identifier);
+			fprintf(stderr, "Untracked window %zu destroyed on display %s\n", ev->xdestroywindow.window, display->identifier);
 	}
 	return 0;
 }
@@ -449,7 +449,7 @@ int x11_loop(fd_set* in, fd_set* out, int* max_fd){
 		if(mark){
 			while(XPending(displays[u].display_handle)){
 				XNextEvent(displays[u].display_handle, &ev);
-				if(x11_handle_event(displays + u, ev)){
+				if(x11_handle_event(displays + u, &ev)){
 					return 1;
 				}
 			}

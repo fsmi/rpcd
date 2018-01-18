@@ -145,7 +145,7 @@ char* get_url(Config* config, char* format, ...) {
 	va_end(ap);
 
 	if (url_len <= 0 || arg_len <= 0) {
-		fprintf(stderr, "snprintf return negative or zero length.\n");
+		fprintf(stderr, "Failed to determine required buffer length\n");
 		return NULL;
 	}
 
@@ -156,7 +156,7 @@ char* get_url(Config* config, char* format, ...) {
 		return NULL;
 	}
 
-	sprintf(url, "http://%s:%d/", config->host, config->port);
+	snprintf(url, url_len + arg_len, "http://%s:%d/", config->host, config->port);
 	va_start(ap, format);
 	vsprintf(url + url_len, format, ap);
 	va_end(ap);
