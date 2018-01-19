@@ -217,24 +217,24 @@ int parse_state(Config* config, struct netdata* data) {
 		return 1;
 	}
 
-	ejson_array* elem = (ejson_array*) ejson_find_by_key((ejson_object*) root, "layout", false, false);
+	ejson_base* elem = ejson_find_by_key(&root->object, "layout", false, false);
 	if (!elem) {
 		fprintf(stderr, "Server response format invalid: missing key\n");
 		ejson_cleanup(root);
 		return 1;
 	}
 
-	if (elem->base.type != EJSON_ARRAY) {
+	if (elem->type != EJSON_ARRAY) {
 		fprintf(stderr, "Server response format invalid: missing key\n");
 		return 1;
 	}
 
-	if (parse_state_layout(config, (ejson_array*) elem)) {
+	if (parse_state_layout(config, &elem->array)) {
 		ejson_cleanup(root);
 		return 1;
 	}
 
-	elem = (ejson_array*) ejson_find_by_key((ejson_object*) root, "running", false, false);
+	elem = ejson_find_by_key(&root->object, "running", false, false);
 	if (!elem) {
 		fprintf(stderr, "Server response format invalid: missing key\n");
 		ejson_cleanup(root);
@@ -243,8 +243,8 @@ int parse_state(Config* config, struct netdata* data) {
 	char* cmd;
 	int i;
 	printf("\nCurrently running commands:\n\t");
-	for (i = 0; i < elem->length; i++) {
-		if (ejson_get_string(elem->values[i], &cmd) != EJSON_OK) {
+	for (i = 0; i < elem->array.length; i++) {
+		if (ejson_get_string(elem->array.values[i], &cmd) != EJSON_OK) {
 			fprintf(stderr, "Server response format invalid: invalid type\n");
 			ejson_cleanup(root);
 			return 1;
@@ -260,24 +260,24 @@ int parse_state(Config* config, struct netdata* data) {
 }
 
 int parse_frames(ejson_object* root) {
-	ejson_array* elem;
+	ejson_base* elem;
 
-	elem = (ejson_array*) ejson_find_by_key(root, "frames", false, false);
+	elem = ejson_find_by_key(root, "frames", false, false);
 	if (!elem) {
 		return 1;
 	}
 
-	if (elem->base.type != EJSON_ARRAY) {
+	if (elem->type != EJSON_ARRAY) {
 		return 1;
 	}
 
 	printf("Available frames:\n");
 	int i;
-	ejson_object* item;
-	for (i = 0; i < elem->length; i++) {
-		item = (ejson_object*) elem->values[i];
+	ejson_base* item;
+	for (i = 0; i < elem->array.length; i++) {
+		item = elem->array.values[i];
 
-		if (item->base.type != EJSON_OBJECT) {
+		if (item->type != EJSON_OBJECT) {
 			continue;
 		}
 
@@ -288,12 +288,12 @@ int parse_frames(ejson_object* root) {
 		int h = -1;
 		int screen = -1;
 
-		ejson_get_int_from_key(item, "id", false, false, &id);
-		ejson_get_int_from_key(item, "x", false, false, &x);
-		ejson_get_int_from_key(item, "y", false, false, &y);
-		ejson_get_int_from_key(item, "w", false, false, &w);
-		ejson_get_int_from_key(item, "h", false, false, &h);
-		ejson_get_int_from_key(item, "screen", false, false, &screen);
+		ejson_get_int_from_key(&item->object, "id", false, false, &id);
+		ejson_get_int_from_key(&item->object, "x", false, false, &x);
+		ejson_get_int_from_key(&item->object, "y", false, false, &y);
+		ejson_get_int_from_key(&item->object, "w", false, false, &w);
+		ejson_get_int_from_key(&item->object, "h", false, false, &h);
+		ejson_get_int_from_key(&item->object, "screen", false, false, &screen);
 
 		printf("\t[ID %d]\t(%d,%d) %dx%d on Screen %d\n", id, x, y, w, h, screen);
 	}
@@ -302,14 +302,14 @@ int parse_frames(ejson_object* root) {
 }
 
 int parse_screens(ejson_object* root) {
-	ejson_array* elem;
+	ejson_base* elem;
 
-	elem = (ejson_array*) ejson_find_by_key(root, "screens", false, false);
+	elem = ejson_find_by_key(root, "screens", false, false);
 	if (!elem) {
 		return 1;
 	}
 
-	if (elem->base.type != EJSON_ARRAY) {
+	if (elem->type != EJSON_ARRAY) {
 		return 1;
 	}
 
@@ -317,10 +317,10 @@ int parse_screens(ejson_object* root) {
 
 	int i;
 	ejson_object* item;
-	for (i = 0; i < elem->length; i++) {
-		item = (ejson_object*) elem->values[i];
+	for (i = 0; i < elem->array.length; i++) {
+		item = &elem->array.values[i]->object;
 
-		if (item->base.type != EJSON_OBJECT) {
+		if (item->type != EJSON_OBJECT) {
 			continue;
 		}
 
@@ -344,8 +344,8 @@ int parse_layouts(Config* config, ejson_array* root, char* display) {
 	char* name;
 	ejson_object* elem;
 	for (i = 0; i < root->length; i++) {
-		elem = (ejson_object*) root->values[i];
-		if (elem->base.type != EJSON_OBJECT) {
+		elem = &root->values[i]->object;
+		if (elem->type != EJSON_OBJECT) {
 			continue;
 		}
 
@@ -366,13 +366,13 @@ int parse_layouts(Config* config, ejson_array* root, char* display) {
 
 int parse_displays(Config* config, struct netdata* data) {
 
-	ejson_array* root = NULL;
+	ejson_base* root = NULL;
 
-	if (ejson_parse_warnings(data->data, data->len, true, stderr, (ejson_base**) &root) != EJSON_OK) {
+	if (ejson_parse_warnings(data->data, data->len, true, stderr, &root) != EJSON_OK) {
 		return 1;
 	}
 
-	if (root->base.type != EJSON_ARRAY) {
+	if (root->type != EJSON_ARRAY) {
 		fprintf(stderr, "Server response format invalid: invalid root type\n");
 		return 1;
 	}
@@ -381,14 +381,14 @@ int parse_displays(Config* config, struct netdata* data) {
 	ejson_array* layout;
 	char* display;
 	int i;
-	for (i = 0; i < root->length; i++) {
-		elem = (ejson_object*) root->values[i];
+	for (i = 0; i < root->array.length; i++) {
+		elem = &root->array.values[i]->object;
 		if (ejson_get_string_from_key(elem, "display", false, false, &display) != EJSON_OK) {
 			fprintf(stderr, "Server response format invalid: invalid type\n");
 			return 1;
 		}
 
-		layout = (ejson_array*) ejson_find_by_key(elem, "layouts", false, false);
+		layout = &ejson_find_by_key(elem, "layouts", false, false)->array;
 
 		if (!layout) {
 			fprintf(stderr, "Server response format invalid: missing key\n");
@@ -400,19 +400,19 @@ int parse_displays(Config* config, struct netdata* data) {
 		}
 	}
 
-	ejson_cleanup((ejson_base*) root);
+	ejson_cleanup(root);
 
 	return 0;
 }
 
 int print_options(Config* config, ejson_object* root, char* arg_name) {
-	ejson_array* options = (ejson_array*) ejson_find_by_key(root, "options", false, false);
+	ejson_array* options = &ejson_find_by_key(root, "options", false, false)->array;
 	if (!options) {
 		fprintf(stderr, "Server response format invalid: missing key\n");
 		return 1;
 	}
 
-	if (options->base.type != EJSON_ARRAY) {
+	if (options->type != EJSON_ARRAY) {
 		fprintf(stderr, "Server response format invalid: wrong type\n");
 		return 1;
 	}
@@ -438,14 +438,14 @@ int print_options(Config* config, ejson_object* root, char* arg_name) {
 }
 
 int parse_commands(Config* config, struct netdata* data) {
-	ejson_array* ejson = NULL;
-	if (ejson_parse_warnings(data->data, data->len, true, stderr, (ejson_base**) &ejson) != EJSON_OK) {
+	ejson_base* ejson = NULL;
+	if (ejson_parse_warnings(data->data, data->len, true, stderr, &ejson) != EJSON_OK) {
 		return 1;
 	}
 
-	if (!ejson || ejson->base.type != EJSON_ARRAY) {
+	if (!ejson || ejson->type != EJSON_ARRAY) {
 		fprintf(stderr, "Server response format invalid: invalid type\n");
-		ejson_cleanup((ejson_base*) ejson);
+		ejson_cleanup(ejson);
 		return 1;
 	}
 
@@ -456,9 +456,9 @@ int parse_commands(Config* config, struct netdata* data) {
 	int state;
 	char* name;
 	char* description;
-	for (i = 0; i < ejson->length; i++) {
-		elem = (ejson_object*) ejson->values[i];
-		if (elem->base.type != EJSON_OBJECT) {
+	for (i = 0; i < ejson->array.length; i++) {
+		elem = &ejson->array.values[i]->object;
+		if (elem->type != EJSON_OBJECT) {
 			continue;
 		}
 		err = ejson_get_string_from_key(elem, "name", false, false, &name);
@@ -466,7 +466,7 @@ int parse_commands(Config* config, struct netdata* data) {
 			continue;
 		} else if (err != EJSON_OK) {
 			fprintf(stderr, "Server response format invalid: invalid type\n");
-			ejson_cleanup((ejson_base*) ejson);
+			ejson_cleanup(ejson);
 			return 1;
 		}
 		printf("Command \"%s\"\n", name);
@@ -474,7 +474,7 @@ int parse_commands(Config* config, struct netdata* data) {
 		err = ejson_get_string_from_key(elem, "description", false, false, &description);
 		if (err != EJSON_OK) {
 			fprintf(stderr, "Server response format invalid: invalid type\n");
-			ejson_cleanup((ejson_base*) ejson);
+			ejson_cleanup(ejson);
 			return 1;
 		}
 
@@ -485,7 +485,7 @@ int parse_commands(Config* config, struct netdata* data) {
 		err = ejson_get_int_from_key(elem, "windows", false, false, &state);
 		if (err != EJSON_OK) {
 			fprintf(stderr, "Server response format invalid: invalid type\n");
-			ejson_cleanup((ejson_base*) ejson);
+			ejson_cleanup(ejson);
 			return 1;
 		}
 
@@ -493,16 +493,16 @@ int parse_commands(Config* config, struct netdata* data) {
 			printf("This command will not create any windows\n");
 		}
 
-		args = (ejson_array*) ejson_find_by_key(elem, "args", false, false);
+		args = &ejson_find_by_key(elem, "args", false, false)->array;
 
 		if (!args) {
 			fprintf(stderr, "No arguments found.\n");
 			continue;
 		}
 
-		if (args->base.type != EJSON_ARRAY) {
+		if (args->type != EJSON_ARRAY) {
 			fprintf(stderr, "Args is not an array.\n");
-			ejson_cleanup((ejson_base*) ejson);
+			ejson_cleanup(ejson);
 			return 1;
 		}
 
@@ -511,16 +511,16 @@ int parse_commands(Config* config, struct netdata* data) {
 		ejson_object* arg;
 		char* arg_name;
 		for (j = 0; j < args->length; j++) {
-			arg = (ejson_object*) args->values[j];
+			arg = &args->values[j]->object;
 
-			if (arg->base.type != EJSON_OBJECT) {
+			if (arg->type != EJSON_OBJECT) {
 				continue;
 			}
 
 			err = ejson_get_string_from_key(arg, "name", false, false, &arg_name);
 			if (err != EJSON_OK) {
 				fprintf(stderr, "Server response format invalid: missing key\n");
-				ejson_cleanup((ejson_base*) ejson);
+				ejson_cleanup(ejson);
 				return 1;
 			}
 
@@ -528,14 +528,14 @@ int parse_commands(Config* config, struct netdata* data) {
 			err = ejson_get_string_from_key(arg, "type", false, false, &type);
 			if (err != EJSON_OK) {
 				fprintf(stderr, "Server response format invalid: missing key\n");
-				ejson_cleanup((ejson_base*) ejson);
+				ejson_cleanup(ejson);
 				return 1;
 			}
 
 			printf("%s=", arg_name);
 			if (!strcmp(type, "enum")) {
 				if (print_options(config, arg, arg_name)) {
-					ejson_cleanup((ejson_base*) ejson);
+					ejson_cleanup(ejson);
 					return 1;
 				}
 			} else {
@@ -545,14 +545,14 @@ int parse_commands(Config* config, struct netdata* data) {
 					printf("\t%s: %s\n", arg_name, hint);
 				} else if (err != EJSON_KEY_NOT_FOUND) {
 					fprintf(stderr, "Server response format invalid: invalid type\n");
-					ejson_cleanup((ejson_base*) ejson);
+					ejson_cleanup(ejson);
 					return 1;
 				}
 			}
 			printf("\n");
 		}
 	}
-	ejson_cleanup((ejson_base*) ejson);
+	ejson_cleanup(ejson);
 	return 0;
 }
 

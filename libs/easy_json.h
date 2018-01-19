@@ -18,6 +18,7 @@ enum ejson_errors {
 	/** Cannot find key. */
 	EJSON_KEY_NOT_FOUND = 3
 };
+
 /**
  * Enum for json types. Number is split in double and int.
  */
@@ -37,59 +38,63 @@ enum ejson_types {
 	/** Json null value */
 	EJSON_NULL = 16
 };
-
-typedef struct {
-	enum ejson_types type;
-} ejson_base;
-
+union ejson_base;
 typedef struct {
 	char* key;
-	ejson_base* value;
+	union ejson_base* value;
 } ejson_key;
-
 typedef struct {
-	ejson_base base;
+	enum ejson_types type;
 	long length;
 	ejson_key** keys;
 } ejson_object;
 
 typedef struct {
-	ejson_base base;
+	enum ejson_types type;
 	long length;
-	ejson_base** values;
+	union ejson_base** values;
 } ejson_array;
 
 typedef struct {
-	ejson_base base;
+	enum ejson_types type;
 	char* value;
 } ejson_string;
 
 typedef struct {
-	ejson_base base;
+	enum ejson_types type;
 } ejson_null;
 
 typedef struct {
-	ejson_base base;
+	enum ejson_types type;
 	long value;
 } ejson_number;
 
 typedef struct {
-	ejson_base base;
+	enum ejson_types type;
 	double value;
 } ejson_real;
 
 typedef struct {
-	ejson_base base;
+	enum ejson_types type;
 	int value;
 } ejson_bool;
 
+typedef union ejson_base {
+	enum ejson_types type;
+	ejson_object object;
+	ejson_array array;
+	ejson_string string;
+	ejson_null null;
+	ejson_number number;
+	ejson_real real;
+	ejson_bool boolean;
+} ejson_base;
 
 /**
  * Internal json parser structure.
  */
 typedef struct {
 	enum ejson_errors error;
-	char* reason;
 	char* data;
 	size_t pos;
 	size_t len;

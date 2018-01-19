@@ -242,7 +242,7 @@ static int child_verify_enum(argument_t* arg, char* value){
 }
 
 static int child_parse_json(rpcd_child_t* command, command_instance_t* instance, ejson_object* ejson) {
-	ejson_array* args = (ejson_array*) ejson_find_by_key(ejson, "arguments", false, false);
+	ejson_object* args = &ejson_find_by_key(ejson, "arguments", false, false)->object;
 	size_t u;
 	argument_t* cmd_arg;
 	int err;
@@ -289,13 +289,13 @@ static int child_parse_json(rpcd_child_t* command, command_instance_t* instance,
 			return 1;
 		}
 
-		if (args->base.type != EJSON_OBJECT) {
+		if (args->type != EJSON_OBJECT) {
 			fprintf(stderr, "Arguments is not an object.\n");
 			return 1;
 		}
 		for (u = 0; u < command->nargs; u++) {
 			cmd_arg = command->args + u;
-			err = ejson_get_string_from_key((ejson_object*) args, cmd_arg->name, true, false, &instance->arguments[u]);
+			err = ejson_get_string_from_key(args, cmd_arg->name, true, false, &instance->arguments[u]);
 			if (err == EJSON_KEY_NOT_FOUND) {
 				continue;
 			} else if (err != EJSON_OK) {
@@ -333,8 +333,8 @@ int child_run_command(rpcd_child_t* command, char* data, size_t data_len){
 	}
 
 	enum ejson_errors error = ejson_parse_warnings(data, data_len, true, stderr, &ejson);
-	if(error == EJSON_OK && ejson->type == EJSON_OBJECT){
-		if(!child_parse_json(command, &instance, (ejson_object*) ejson)){
+	if (error == EJSON_OK && ejson->type == EJSON_OBJECT){
+		if(!child_parse_json(command, &instance, &ejson->object)){
 			//debug variable set
 			for(u = 0; u < command->nargs; u++){
 				fprintf(stderr, "%s.%s -> %s\n", command->name, command->args[u].name, instance.arguments[u] ? instance.arguments[u] : "-null-");
