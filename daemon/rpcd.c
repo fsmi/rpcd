@@ -52,6 +52,7 @@ int main(int argc, char** argv){
 
 	signal(SIGINT, signal_handler);
 	signal(SIGCHLD, signal_handler);
+	signal(SIGPIPE, SIG_IGN);
 	FD_ZERO(&primary);
 
 	fprintf(stderr, "%s now waiting for API clients\n", VERSION);

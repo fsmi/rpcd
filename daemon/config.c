@@ -16,7 +16,9 @@ static enum {
 	conf_api,
 	conf_x11,
 	conf_layout,
-	conf_command
+	conf_command,
+	conf_control,
+	conf_variables
 } config_state = conf_none;
 
 static char* config_trim_line(char* in){
@@ -67,6 +69,12 @@ int config_parse(char* cfg_file){
 
 			if(!strcmp(line, "[api]")){
 				config_state = conf_api;
+			}
+			else if(!strcmp(line, "[control]")){
+				config_state = conf_control;
+			}
+			else if(!strcmp(line, "[variables]")){
+				config_state = conf_variables;
 			}
 			else if(!strncmp(line, "[x11 ", 5)){
 				line[strlen(line) - 1] = 0;
@@ -130,6 +138,16 @@ int config_parse(char* cfg_file){
 					break;
 				case conf_command:
 					if(child_config_command(line, argument)){
+						goto bail;
+					}
+					break;
+				case conf_control:
+					if(control_config(line, argument)){
+						goto bail;
+					}
+					break;
+				case conf_variables:
+					if(control_config_variable(line, argument)){
 						goto bail;
 					}
 					break;
