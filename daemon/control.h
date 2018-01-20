@@ -1,5 +1,7 @@
 #include <X11/Xlib.h>
 #define LISTEN_QUEUE_LENGTH 128
+#define CLIENT_RECV_CHUNK 2048
+#define CLIENT_RECV_LIMIT 8192
 
 typedef struct /*_automation_variable_t*/ {
 	char* name;
