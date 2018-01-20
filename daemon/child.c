@@ -521,7 +521,8 @@ int child_match_window(size_t display_id, Window window, pid_t pid, char* title,
 		return 0;
 	}
 
-	fprintf(stderr, "Failed to match window %zu (%d, %s, %s, %s) on display %zu to executing child\n", window, pid, title, name, class, display_id);
+	fprintf(stderr, "Failed to match window %zu (%d, %s, %s, %s) on display %zu to executing child\n", window, pid, title ? title : "-none-",
+			name ? name : "-none-", class ? class : "-none-", display_id);
 	return 0;
 }
 

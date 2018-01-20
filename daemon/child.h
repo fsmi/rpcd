@@ -38,6 +38,9 @@ typedef struct /*_rpcd_child_t*/ {
 	argument_t* args; /*command user arguments*/
 	size_t restore_layout; /*undo layout changes after termination*/
 
+	/*automation specific attributes*/
+	size_t start_iteration;
+
 	/*x11 attributes*/
 	size_t order; /*activation stack order*/
 	size_t display_id; /*active display*/
