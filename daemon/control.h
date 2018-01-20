@@ -22,9 +22,41 @@ typedef struct /*_control_input_t*/ {
 	char* recv_buffer;
 } control_input_t;
 
+typedef enum /*_automation_opcode_t*/ {
+	//unary operations
+	op_layout_default, //requires display_id
+	op_layout, //requires display_id, operand_numeric = layout_id
+	op_skip, //requires operand_numeric = skip
+	op_condition_empty, //requires operand_a, resolve_a
+	op_stop,
+	//binary operations
+	op_assign, //requires operand_a, display_id, operand_numeric = frame
+	op_condition_greater, //requires negate, operand_a, operand_b, resolve_a, resolve_b
+	op_condition_less, //see above
+	op_condition_equals //see above
+} automation_opcode_t;
+
+typedef enum /*_automation_display_status_t*/ {
+	display_ready,
+	display_busy,
+	display_waiting
+} display_status_t;
+
+typedef struct /*_automation_op_t*/ {
+	automation_opcode_t op;
+	size_t display_id;
+	size_t negate;
+	size_t operand_numeric;
+	size_t resolve_a;
+	size_t resolve_b;
+	char* operand_a;
+	char* operand_b;
+} automation_operation_t;
+
 int control_config(char* option, char* value);
 int control_config_variable(char* name, char* value);
 int control_config_automation(char* line);
 int control_loop(fd_set* in, fd_set* out, int* max_fd);
+int control_run_automation();
 int control_ok();
 void control_cleanup();

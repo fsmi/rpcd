@@ -11,11 +11,18 @@
 #include <errno.h>
 #include <ctype.h>
 
+#include "x11.h"
+#include "layout.h"
+
 static size_t nvars = 0;
 static variable_t* vars = NULL;
 
 static size_t nfds = 0;
 static control_input_t* fds = NULL;
+
+static size_t noperations = 0;
+static automation_operation_t* operations = NULL;
+static display_status_t* display_status = NULL;
 
 static int control_input(input_type_t type, int fd){
 	size_t u;
@@ -193,19 +200,32 @@ int control_config(char* option, char* value){
 	return 1;
 }
 
-int control_config_variable(char* name, char* value){
-	size_t u;
-
-	if(strlen(name) < 1){
-		fprintf(stderr, "Invalid control variable name\n");
-		return 1;
-	}
+static ssize_t control_variable_find(char* name){
+	ssize_t u;
 
 	for(u = 0; u < nvars; u++){
 		if(!strcasecmp(name, vars[u].name)){
-			fprintf(stderr, "Control variable %s already defined\n", name);
-			return 1;
+			return u;
 		}
+	}
+
+	return -1;
+}
+
+int control_config_variable(char* name, char* value){
+	if(strlen(name) < 1){
+		fprintf(stderr, "Control variable name unset\n");
+		return 1;
+	}
+
+	if(isdigit(name[0]) || name[0] == '-'){
+		fprintf(stderr, "Invalid control variable name: %s\n", name);
+		return 1;
+	}
+
+	if(control_variable_find(name) >= 0){
+		fprintf(stderr, "Control variable %s already defined\n", name);
+		return 1;
 	}
 
 	vars = realloc(vars, (nvars + 1) * sizeof(variable_t));
@@ -231,8 +251,108 @@ int control_config_variable(char* name, char* value){
 	return 0;
 }
 
+static size_t control_evaluate_condition(automation_operation_t* op){
+	size_t rv = 0;
+	char* operand_a = op->operand_a, *operand_b = op->operand_b;
+
+	if(op->resolve_a){
+		//since the automation parser assures that all referenced variables exist, this works
+		operand_a = vars[control_variable_find(operand_a)].value;
+	}
+
+	if(op->resolve_b){
+		operand_b = vars[control_variable_find(operand_b)].value;
+	}
+
+	switch(op->op){
+		case op_condition_greater:
+			rv = (strtoul(operand_a, NULL, 10) > strtoul(operand_b, NULL, 10)) ? 1 : 0;
+			break;
+		case op_condition_less:
+			rv = (strtoul(operand_a, NULL, 10) < strtoul(operand_b, NULL, 10)) ? 1 : 0;
+			break;
+		case op_condition_equals:
+			rv = strcmp(op->operand_a, op->operand_b) ? 0 : 1;
+			break;
+		case op_condition_empty:
+			rv = strlen(operand_a) ? 0 : 1;
+			break;
+		default:
+			fprintf(stderr, "Unhandled conditional operation, result undefined\n");
+			break;
+	}
+
+	return op->negate ? (rv ? 0 : 1) : rv;
+}
+
+int control_run_automation(){
+	size_t u;
+	layout_t* layout = NULL;
+
+	if(!display_status){
+		//initialize display status list
+		display_status = calloc(x11_count(), sizeof(display_status_t));
+	}
+
+	//set initial display states
+	for(u = 0; u < x11_count(); u++){
+		display_status[u] = display_ready;
+		//TODO fetch current busy state
+	}
+
+	for(u = 0; u < noperations; u++){
+		switch(operations[u].op){
+			case op_layout_default:
+				if(display_status[operations[u].display_id] == display_ready){
+					layout = x11_get(operations[u].display_id)->default_layout;
+					if(!layout){
+						fprintf(stderr, "No default layout defined on display %zu, not activating\n", operations[u].display_id);
+						break;
+					}
+					if(x11_activate_layout(layout)){
+						fprintf(stderr, "Automation failed to activate layout %s, exiting\n", layout->name);
+						return 1;
+					}
+				}
+				break;
+			case op_layout:
+				if(display_status[operations[u].display_id] == display_ready){
+					//this works because the automation parser resolves layouts at parse time
+					layout = layout_get(operations[u].operand_numeric);
+					if(x11_activate_layout(layout)){
+						fprintf(stderr, "Automation failed to activate layout %s, exiting\n", layout->name);
+						return 1;
+					}
+				}
+				break;
+			case op_assign:
+				if(display_status[operations[u].display_id] != display_busy){
+					//TODO stop command if on different display
+					//TODO start command if not started
+					//if window not ready, set display not ready
+				}
+				break;
+			case op_skip:
+				u += operations[u].operand_numeric;
+				break;
+			case op_condition_greater:
+			case op_condition_less:
+			case op_condition_equals:
+			case op_condition_empty:
+				u += control_evaluate_condition(operations + u);
+				break;
+			case op_stop:
+				fprintf(stderr, "Automation stopped by operation\n");
+				return 0;
+		}
+	}
+
+	fprintf(stderr, "Automation stopped by end of instruction list\n");
+	return 0;
+}
+
 int control_config_automation(char* line){
-	//TODO
+	//TODO assert that all referenced variables exist
 	return 0;
 }
 

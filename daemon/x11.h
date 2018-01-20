@@ -26,8 +26,8 @@ typedef struct /*_x11_display_t*/ {
 	char* name;
 	char* identifier;
 	char* default_layout_name;
-	int repatriate;
-	int busy;
+	size_t repatriate;
+	size_t busy;
 
 	Display* display_handle;
 	Atom rp_command;
