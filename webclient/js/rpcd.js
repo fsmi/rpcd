@@ -295,7 +295,7 @@ class Controller {
 			}
 			layout.frames.forEach((frame, k) => {
 				let option = document.createElement('option');
-				option.value = `${d.display}/${k}`;
+				option.value = `${d.display}/${frame.id}`;
 				if (option.value === oldvalue) {
 					option.selected = true;
 				}
