@@ -175,10 +175,10 @@ static int child_execute(rpcd_child_t* child, command_instance_t* args){
 			child_command_proc(child, args);
 			exit(EXIT_FAILURE);
 		case -1:
-			x11_lock(child->display_id);
 			fprintf(stderr, "Failed to spawn off new process for command %s: %s\n", child->name, strerror(errno));
 			return 1;
 		default:
+			x11_lock(child->display_id);
 			child->state = running;
 			child->restore_layout = args->restore_layout;
 	}
