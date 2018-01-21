@@ -338,6 +338,23 @@ int x11_fetch_layout(size_t display_id, char** layout){
 	return x11_run_command(x11_get(display_id), "sfdump", layout);
 }
 
+void x11_lock(size_t display_id){
+	x11_get(display_id)->busy++;
+}
+
+void x11_unlock(size_t display_id){
+	display_t* display = x11_get(display_id);
+	if(display->busy){
+		display->busy--;
+		if(!display->busy){
+			fprintf(stderr, "Display %s ready for automation\n", display->name);
+		}
+	}
+	else{
+		fprintf(stderr, "Unmatched display unlock on %zu\n", display_id);
+	}
+}
+
 int x11_activate_layout(layout_t* layout){
 	size_t left = 0, frame = 0, off = 10;
 	display_t* display = x11_get(layout->display_id);

@@ -81,6 +81,7 @@ int child_reap(){
 						x11_rollback(children[u].display_id);
 						children[u].restore_layout = 0;
 					}
+					x11_unlock(children[u].display_id);
 					fprintf(stderr, "Instance of %s stopped\n", children[u].name);
 				}
 			}
@@ -174,6 +175,7 @@ static int child_execute(rpcd_child_t* child, command_instance_t* args){
 			child_command_proc(child, args);
 			exit(EXIT_FAILURE);
 		case -1:
+			x11_lock(child->display_id);
 			fprintf(stderr, "Failed to spawn off new process for command %s: %s\n", child->name, strerror(errno));
 			return 1;
 		default:

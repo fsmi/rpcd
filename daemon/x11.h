@@ -49,6 +49,8 @@ int x11_rollback(size_t display_id);
 int x11_select_frame(size_t display_id, size_t frame_id);
 int x11_fetch_layout(size_t display_id, char** layout);
 layout_t* x11_current_layout(size_t display_id);
+void x11_lock(size_t display_id);
+void x11_unlock(size_t display_id);
 
 int x11_new(char* name);
 int x11_loop(fd_set* in, fd_set* out, int* max_fd);

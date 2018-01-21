@@ -296,8 +296,7 @@ int control_run_automation(){
 
 	//set initial display states
 	for(u = 0; u < x11_count(); u++){
-		display_status[u] = display_ready;
-		//TODO fetch current busy state
+		display_status[u] = x11_get(u)->busy ? display_busy : display_ready;
 	}
 
 	for(u = 0; u < noperations; u++){
