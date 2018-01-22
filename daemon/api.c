@@ -405,11 +405,11 @@ static int api_handle_body(http_client_t* client){
 	else if(!strcmp(client->endpoint, "/reset")){
 		rv = api_send_header(client, "200 OK", true);
 		if(api_handle_reset()){
-			rv |= api_send_header(client, "200 OK", true)
-				|| network_send(client->fd, "{}");
+			rv = 1;
 		}
 		else{
-			rv = 1;
+			rv |= api_send_header(client, "200 OK", true)
+				|| network_send(client->fd, "{}");
 		}
 	}
 	else if(!strcmp(client->endpoint, "/status")){
