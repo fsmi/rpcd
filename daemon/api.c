@@ -403,7 +403,6 @@ static int api_handle_body(http_client_t* client){
 			|| api_send_layouts(client);
 	}
 	else if(!strcmp(client->endpoint, "/reset")){
-		rv = api_send_header(client, "200 OK", true);
 		if(api_handle_reset()){
 			rv = 1;
 		}
