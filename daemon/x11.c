@@ -344,6 +344,10 @@ void x11_lock(size_t display_id){
 
 void x11_unlock(size_t display_id){
 	display_t* display = x11_get(display_id);
+	if(!display){
+		fprintf(stderr, "Unlock requested on invalid display %zu\n", display_id);
+		return;
+	}
 	if(display->busy){
 		display->busy--;
 		if(!display->busy){
