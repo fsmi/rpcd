@@ -80,11 +80,13 @@ static int control_new_socket(char* path){
 	strncpy(info.sun_path, path, sizeof(info.sun_path) - 1);
 	if(bind(fd, (struct sockaddr*) &info, sizeof(info))){
 		fprintf(stderr, "Failed to bind socket path %s: %s\n", path, strerror(errno));
+		close(fd);
 		return 1;
 	}
 
 	if(listen(fd, LISTEN_QUEUE_LENGTH)){
 		fprintf(stderr, "Failed to listen for socket %s: %s\n", path, strerror(errno));
+		close(fd);
 		return 1;
 	}
 	return control_input(control_socket, fd);
