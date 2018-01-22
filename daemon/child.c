@@ -32,6 +32,7 @@ int child_discard_restores(size_t display_id){
 
 int child_stop(rpcd_child_t* child){
 	//FIXME this should reset the stack maximum index
+	//TODO set the stack order to "do not use"
 	//this happens when trying to stop a repatriated child
 	if(!child->instance){
 		child->state = stopped;
@@ -59,6 +60,19 @@ int child_stop(rpcd_child_t* child){
 	return 0;
 }
 
+int child_stop_commands(size_t display_id){
+	size_t u;
+	int rv = 0;
+	for(u = 0; u < nchildren; u++){
+		if(children[u].mode == user
+				&& children[u].state != stopped
+				&& children[u].display_id == display_id){
+			rv |= child_stop(children + u);
+		}
+	}
+	return rv;
+}
+
 int child_reap(){
 	int wait_status;
 	pid_t status;
@@ -81,7 +95,10 @@ int child_reap(){
 						x11_rollback(children[u].display_id);
 						children[u].restore_layout = 0;
 					}
-					x11_unlock(children[u].display_id);
+					//commands without windows don't lock the display
+					if(children[u].mode == user){
+						x11_unlock(children[u].display_id);
+					}
 					fprintf(stderr, "Instance of %s stopped\n", children[u].name);
 				}
 			}
@@ -178,7 +195,9 @@ static int child_execute(rpcd_child_t* child, command_instance_t* args){
 			fprintf(stderr, "Failed to spawn off new process for command %s: %s\n", child->name, strerror(errno));
 			return 1;
 		default:
-			x11_lock(child->display_id);
+			if(child->mode == user){
+				x11_lock(child->display_id);
+			}
 			child->state = running;
 			child->restore_layout = args->restore_layout;
 	}
@@ -504,6 +523,11 @@ int child_match_window(size_t display_id, Window window, pid_t pid, char* title,
 			current_pid = child_parent(current_pid);
 			strategy--;
 			continue;
+		}
+
+		//if we had a pid and could not match it, do not continue
+		if(strategy == match_pid){
+			break;
 		}
 	}
 

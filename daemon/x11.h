@@ -43,6 +43,7 @@ size_t x11_count();
 display_t* x11_get(size_t index);
 size_t x11_find_id(char* name);
 
+int x11_default_layout(size_t display_id);
 int x11_activate_layout(layout_t* layout);
 int x11_fullscreen(size_t display_id);
 int x11_rollback(size_t display_id);

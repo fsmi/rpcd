@@ -303,13 +303,7 @@ int control_run_automation(){
 		switch(operations[u].op){
 			case op_layout_default:
 				if(display_status[operations[u].display_id] == display_ready){
-					layout = x11_get(operations[u].display_id)->default_layout;
-					if(!layout){
-						fprintf(stderr, "No default layout defined on display %zu, not activating\n", operations[u].display_id);
-						break;
-					}
-					if(x11_activate_layout(layout)){
-						fprintf(stderr, "Automation failed to activate layout %s, exiting\n", layout->name);
+					if(x11_default_layout(operations[u].display_id)){
 						return 1;
 					}
 				}

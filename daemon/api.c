@@ -380,6 +380,18 @@ static int api_send_status(http_client_t* client){
 	return rv;
 }
 
+static int api_handle_reset(){
+	size_t u = 0;
+	int rv = 0;
+	for(u = 0; u < x11_count(); u++){
+		//FIXME may want to reap exited children live
+		rv |= child_discard_restores(u)
+			| child_stop_commands(u)
+			| x11_default_layout(u);
+	}
+	return rv;
+}
+
 static int api_handle_body(http_client_t* client){
 	int rv = 0;
 	if(!strcmp(client->endpoint, "/commands")){
@@ -391,8 +403,14 @@ static int api_handle_body(http_client_t* client){
 			|| api_send_layouts(client);
 	}
 	else if(!strcmp(client->endpoint, "/reset")){
-		api_send_header(client, "200 OK", true);
-		//TODO total reset
+		rv = api_send_header(client, "200 OK", true);
+		if(api_handle_reset()){
+			rv |= api_send_header(client, "200 OK", true)
+				|| network_send(client->fd, "{}");
+		}
+		else{
+			rv = 1;
+		}
 	}
 	else if(!strcmp(client->endpoint, "/status")){
 		rv = api_send_header(client, "200 OK", true)
@@ -401,54 +419,54 @@ static int api_handle_body(http_client_t* client){
 	else if(!strncmp(client->endpoint, "/stop/", 6)){
 		rpcd_child_t* command = child_command_find(client->endpoint + 6);
 		if(!command){
-			api_send_header(client, "400 No such command", false);
+			rv = api_send_header(client, "400 No such command", false);
 		}
 		else if(!child_active(command)){
-			api_send_header(client, "500 Not running", false);
+			rv = api_send_header(client, "500 Not running", false);
 		}
 		else if(child_stop(command)){
-			api_send_header(client, "500 Failed to stop", false);
+			rv = api_send_header(client, "500 Failed to stop", false);
 		}
 		else{
-			api_send_header(client, "200 OK", true);
-			network_send(client->fd, "{}");
+			rv |= api_send_header(client, "200 OK", true) ||
+				network_send(client->fd, "{}");
 		}
 	}
 	else if(!strncmp(client->endpoint, "/layout/", 8)){
 		if(!strchr(client->endpoint + 8, '/')){
 			fprintf(stderr, "Missing display in layout request\n");
-			api_send_header(client, "500 Missing display", false);
+			rv = api_send_header(client, "500 Missing display", false);
 		}
 		else{
 			*strchr(client->endpoint + 8, '/') = 0;
 			layout_t* layout = layout_find(x11_find_id(client->endpoint + 8), client->endpoint + strlen(client->endpoint) + 1);
 
 			if(!layout){
-				api_send_header(client, "400 No such layout", false);
+				rv = api_send_header(client, "400 No such layout", false);
 			}
 			else if(x11_activate_layout(layout)){
-				api_send_header(client, "500 Failed to activate", false);
+				rv = api_send_header(client, "500 Failed to activate", false);
 			}
 			else{
-				api_send_header(client, "200 OK", true);
-				network_send(client->fd, "{}");
+				rv = api_send_header(client, "200 OK", true)
+					|| network_send(client->fd, "{}");
 			}
 		}
 	}
 	else if(!strncmp(client->endpoint, "/command/", 9)){
 		rpcd_child_t* command = child_command_find(client->endpoint + 9);
 		if(!command){
-			api_send_header(client, "400 No such command", false);
+			rv = api_send_header(client, "400 No such command", false);
 		}
 		else if(child_active(command)){
-			api_send_header(client, "500 Already running", false);
+			rv = api_send_header(client, "500 Already running", false);
 		}
 		else if(child_run_command(command, client->recv_buf, client->payload_size)){
-			api_send_header(client, "500 Failed to start", false);
+			rv = api_send_header(client, "500 Failed to start", false);
 		}
 		else{
-			api_send_header(client, "200 OK", true);
-			network_send(client->fd, "{}");
+			rv = api_send_header(client, "200 OK", true)
+				|| network_send(client->fd, "{}");
 		}
 	}
 	else{

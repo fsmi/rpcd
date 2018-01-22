@@ -409,6 +409,15 @@ bail:
 	return rv;
 }
 
+int x11_default_layout(size_t display_id){
+	display_t* display = x11_get(display_id);
+	if(display->default_layout){
+		return x11_activate_layout(display->default_layout);
+	}
+	fprintf(stderr, "No default layout defined on display %s, none loaded\n", display->name);
+	return 0;
+}
+
 int x11_fullscreen(size_t display_id){
 	return x11_run_command(x11_get(display_id), "only", NULL);
 }

@@ -63,6 +63,7 @@ int child_active(rpcd_child_t* child);
 int child_discard_restores(size_t display_id);
 int child_run_command(rpcd_child_t* child, char* posted_json, size_t data_length);
 int child_stop(rpcd_child_t* child);
+int child_stop_commands(size_t display_id);
 int child_reap();
 
 int child_match_window(size_t display_id, Window window, pid_t pid, char* title, char* res_name, char* res_class);
