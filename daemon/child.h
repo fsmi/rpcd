@@ -30,6 +30,7 @@ typedef struct /*_rpcd_child_t*/ {
 	/*generic child attributes*/
 	char* name; /*command/window name*/
 	char* command; /*executed command line*/
+	char* working_directory; /*child working directory*/
 	child_mode_t mode; /*command/window execution mode*/
 
 	/*user command specific attributes*/

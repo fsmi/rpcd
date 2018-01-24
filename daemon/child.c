@@ -111,7 +111,6 @@ int child_reap(){
 static void child_command_proc(rpcd_child_t* child, command_instance_t* args){
 	char* token = NULL, **argv = NULL, *replacement = NULL;
 	size_t nargs = 1, u, p;
-	display_t* display = NULL;
 
 	argv = calloc(2, sizeof(char*));
 	if(!argv){
@@ -164,19 +163,6 @@ static void child_command_proc(rpcd_child_t* child, command_instance_t* args){
 		nargs++;
 	}
 
-	//update the environment with proper DISPLAY
-	if(child->mode == user){
-		display = x11_get(child->display_id);
-		if(setenv("DISPLAY", display->identifier, 1)){
-			fprintf(stderr, "Failed to update the environment: %s\n", strerror(errno));
-		}
-	}
-	else if(unsetenv("DISPLAY")){
-		fprintf(stderr, "Failed to update the environment: %s\n", strerror(errno));
-	}
-
-	//make the child a session leader to be able to kill the entire group
-	setpgrp();
 	//exec into command
 	if(execve(argv[0], argv, environ)){
 		fprintf(stderr, "Failed to execute child process (%s): %s\n", argv[0], strerror(errno));
@@ -184,15 +170,35 @@ static void child_command_proc(rpcd_child_t* child, command_instance_t* args){
 	}
 }
 
-static int child_execute(rpcd_child_t* child, command_instance_t* args){
+static int child_spawn(rpcd_child_t* child, command_instance_t* args){
+	display_t* display = NULL;
 	child->instance = fork();
 	switch(child->instance){
 		case 0:
+			//update the environment with proper DISPLAY
+			if(child->mode != user_no_windows){
+				display = x11_get(child->display_id);
+				if(setenv("DISPLAY", display->identifier, 1)){
+					fprintf(stderr, "Failed to update the environment: %s\n", strerror(errno));
+				}
+			}
+			else if(unsetenv("DISPLAY")){
+				fprintf(stderr, "Failed to update the environment: %s\n", strerror(errno));
+			}
+			//make the child a session leader to be able to kill the entire group
+			setpgrp();
+			//update the working directory if requested
+			if(child->working_directory){
+				if(chdir(child->working_directory)){
+					fprintf(stderr, "Failed to change working directory to %s for %s: %s\n",
+							child->working_directory, child->name, strerror(errno));
+				}
+			}
 			//FIXME might want to differentiate between child types here
 			child_command_proc(child, args);
 			exit(EXIT_FAILURE);
 		case -1:
-			fprintf(stderr, "Failed to spawn off new process for command %s: %s\n", child->name, strerror(errno));
+			fprintf(stderr, "Failed to spawn child process for command %s: %s\n", child->name, strerror(errno));
 			return 1;
 		default:
 			if(child->mode == user){
@@ -360,7 +366,7 @@ int child_run_command(rpcd_child_t* command, char* data, size_t data_len){
 			for(u = 0; u < command->nargs; u++){
 				fprintf(stderr, "%s.%s -> %s\n", command->name, command->args[u].name, instance.arguments[u] ? instance.arguments[u] : "-null-");
 			}
-			rv = child_execute(command, &instance);
+			rv = child_spawn(command, &instance);
 		}
 	}
 
@@ -388,6 +394,7 @@ static void child_free(rpcd_child_t* child){
 	free(child->windows);
 	free(child->args);
 	free(child->command);
+	free(child->working_directory);
 	free(child->description);
 	free(child->name);
 	child_init(child);
@@ -679,6 +686,14 @@ int child_config_command(char* option, char* value){
 		if(!strcmp(value, "no")){
 			last->mode = user_no_windows;
 		}
+		return 0;
+	}
+	else if(!strcmp(option, "chdir")){
+		if(last->working_directory){
+			fprintf(stderr, "Option chdir specified multiple times for command %s\n", last->name);
+			return 1;
+		}
+		last->working_directory = strdup(value);
 		return 0;
 	}
 

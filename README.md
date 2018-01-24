@@ -65,11 +65,12 @@ except for layout names, which are unique per display.
 |[x11 `name`]		| display	| `:0`			| `:0.0`		| X11 display identifier to use		|
 |			| deflayout	| none			| `layout_name`		| Layout to apply on reset		|
 |			| repatriate	| none			| `yes`			| Store current window-frame mapping	|
-|[layout `name`]	| file		| none			| `path/to/file.sfdump` | Path to a ratpoison `sfdump`		| required
+|[layout `name`]	| file		| none			| `path/to/file.sfdump` | Path to a ratpoison `sfdump`		| Either `read-layout` or `file` is required
 |			| read-layout	| none			| `yes`			| Read the layout data from a running `ratpoison`|
 |[command `name`]	| description	| none			| `What does it do`	| Command help/description		|
 |			| command	| none			| `/bin/echo %Var1`	| Command to execute including arguments| required
 |			| windows	| none			| `no`			| Indicates that the command will not open an X window |
+|			| chdir		| none			| `/home/foo/bar/`	| Working directory to execute the command in |
 |			| `VariableName`| none			| `string Arg1`		| Command argument variable specification (see below) |
 
 Commands may have any number of user-specifiable arguments, which replace the `%Variable` placeholders in the command specification.
