@@ -5,6 +5,7 @@ LDLIBS = -lX11
 OBJECTS = $(patsubst %.c,%.o,$(wildcard *.c ../libs/easy_json.c))
 
 rpcd: $(OBJECTS)
+	$(CC) $(CFLAGS) $^ $(LDLIBS) -o $@
 
 all: rpcd
 
