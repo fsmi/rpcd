@@ -23,6 +23,7 @@ typedef struct /*_control_input_t*/ {
 } control_input_t;
 
 typedef enum /*_automation_opcode_t*/ {
+	op_noop = 0,
 	//unary operations
 	op_layout_default, //requires display_id
 	op_layout, //requires display_id, operand_numeric = layout_id

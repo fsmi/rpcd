@@ -287,6 +287,23 @@ static size_t control_evaluate_condition(automation_operation_t* op){
 	return op->negate ? (rv ? 0 : 1) : rv;
 }
 
+static automation_operation_t* control_new_operation(){
+	automation_operation_t empty = {
+		0
+	};
+
+	operations = realloc(operations, (noperations + 1) * sizeof(automation_operation_t));
+	if(!operations){
+		fprintf(stderr, "Failed to allocate memory\n");
+		noperations = 0;
+		return NULL;
+	}
+
+	operations[noperations] = empty;
+	noperations++;
+	return operations + (noperations - 1);
+}
+
 int control_run_automation(){
 	size_t u;
 	layout_t* layout = NULL;
@@ -308,6 +325,8 @@ int control_run_automation(){
 
 	for(u = 0; u < noperations; u++){
 		switch(operations[u].op){
+			case op_noop:
+				break;
 			case op_layout_default:
 				if(display_status[operations[u].display_id] == display_ready){
 					if(x11_default_layout(operations[u].display_id)){
@@ -353,7 +372,60 @@ int control_run_automation(){
 
 int control_config_automation(char* line){
 	//TODO assert that all referenced variables exist
-	return 0;
+	char* token = NULL;
+	automation_operation_t* op = control_new_operation();
+	if(!op){
+		return 1;
+	}
+
+	token = strtok(line, NULL);
+	if(!token){
+		fprintf(stderr, "Synthesized noop\n");
+		return 0;
+	}
+
+	if(!strcmp(token, "default")){
+		token = strtok(NULL, " ");
+		if(token){
+			op->display_id = x11_find_id(token);
+			op->op = op_layout_default;
+			return 0;
+		}
+	}
+	else if(!strcmp(token, "layout")){
+		token = strtok(NULL, " ");
+		if(token){
+			op->display_id = x11_find_id(token);
+			//op->operand_numeric = 
+			//op->op = op_layout;
+		}
+	}
+	else if(!strcmp(token, "assign")){
+		//TODO parse window assignment
+	}
+	else if(!strcmp(token, "skip")){
+		token = strtok(NULL, " ");
+		if(token){
+			op->operand_numeric = strtoul(token, NULL, 10);
+			if(op->operand_numeric){
+				op->op = op_skip;
+				return 0;
+			}
+			else{
+				fprintf(stderr, "Failed to parse skip operand\n");
+			}
+		}
+	}
+	else if(!strcmp(token, "done")){
+		op->op = op_stop;
+		return 0;
+	}
+	else if(!strcmp(token, "if")){
+		//TODO parse conditional statement
+	}
+
+	fprintf(stderr, "Failed to parse automation line, previous segment %s\n", line);
+	return 1;
 }
 
 int control_loop(fd_set* in, fd_set* out, int* max_fd){
