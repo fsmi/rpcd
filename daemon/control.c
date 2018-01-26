@@ -378,9 +378,10 @@ int control_config_automation(char* line){
 		return 1;
 	}
 
-	token = strtok(line, NULL);
-	if(!token){
-		fprintf(stderr, "Synthesized noop\n");
+	token = strtok(line, " ");
+	//empty lines and comments are handled by the config parser, but nevertheless
+	if(!token || strlen(token) == 0){
+		fprintf(stderr, "Synthesized noop for empty line\n");
 		return 0;
 	}
 
@@ -396,8 +397,10 @@ int control_config_automation(char* line){
 		token = strtok(NULL, " ");
 		if(token){
 			op->display_id = x11_find_id(token);
+			//TODO fetch layout id
 			//op->operand_numeric = 
 			//op->op = op_layout;
+			return 0;
 		}
 	}
 	else if(!strcmp(token, "assign")){
