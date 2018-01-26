@@ -829,4 +829,5 @@ void child_cleanup(){
 	}
 	free(children);
 	nchildren = 0;
+	children = NULL;
 }

@@ -612,4 +612,5 @@ void api_cleanup(){
 	}
 	free(clients);
 	nclients = 0;
+	clients = NULL;
 }

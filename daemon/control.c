@@ -291,6 +291,11 @@ int control_run_automation(){
 	size_t u;
 	layout_t* layout = NULL;
 
+	//early exit
+	if(!noperations){
+		return 0;
+	}
+
 	if(!display_status){
 		//initialize display status list
 		display_status = calloc(x11_count(), sizeof(display_status_t));
@@ -407,4 +412,13 @@ void control_cleanup(){
 	free(fds);
 	fds = NULL;
 	nfds = 0;
+
+	for(u = 0; u < noperations; u++){
+		free(operations[u].operand_a);
+		free(operations[u].operand_b);
+	}
+	free(operations);
+	operations = NULL;
+	noperations = 0;
+	free(display_status);
 }

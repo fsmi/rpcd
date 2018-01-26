@@ -261,4 +261,5 @@ void layout_cleanup(){
 	}
 	free(layouts);
 	nlayouts = 0;
+	layouts = NULL;
 }
