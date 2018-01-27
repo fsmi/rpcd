@@ -12,8 +12,10 @@
 #include "child.h"
 #include "../libs/easy_json.h"
 
-static size_t nchildren = 0;
-static rpcd_child_t* children = NULL;
+static size_t ncommands = 0;
+static rpcd_child_t* commands = NULL;
+static size_t nwindows = 0;
+static rpcd_child_t* windows = NULL;
 extern char** environ;
 
 int child_active(rpcd_child_t* child){
@@ -22,9 +24,9 @@ int child_active(rpcd_child_t* child){
 
 int child_discard_restores(size_t display_id){
 	size_t u;
-	for(u = 0; u < nchildren; u++){
-		if(children[u].display_id == display_id){
-			children[u].restore_layout = 0;
+	for(u = 0; u < ncommands; u++){
+		if(commands[u].display_id == display_id){
+			commands[u].restore_layout = 0;
 		}
 	}
 	return 0;
@@ -63,11 +65,11 @@ int child_stop(rpcd_child_t* child){
 int child_stop_commands(size_t display_id){
 	size_t u;
 	int rv = 0;
-	for(u = 0; u < nchildren; u++){
-		if(children[u].mode == user
-				&& children[u].state != stopped
-				&& children[u].display_id == display_id){
-			rv |= child_stop(children + u);
+	for(u = 0; u < ncommands; u++){
+		if(commands[u].mode == user
+				&& commands[u].state != stopped
+				&& commands[u].display_id == display_id){
+			rv |= child_stop(commands + u);
 		}
 	}
 	return rv;
@@ -87,19 +89,28 @@ int child_reap(){
 			return 1;
 		}
 		else if(status != 0){
-			for(u = 0; u < nchildren; u++){
-				if(children[u].state != stopped && children[u].instance == status){
-					children[u].state = stopped;
+			for(u = 0; u < ncommands; u++){
+				if(commands[u].state != stopped && commands[u].instance == status){
+					commands[u].state = stopped;
 					//if restore requested, undo layout change
-					if(children[u].restore_layout){
-						x11_rollback(children[u].display_id);
-						children[u].restore_layout = 0;
+					if(commands[u].restore_layout){
+						x11_rollback(commands[u].display_id);
+						commands[u].restore_layout = 0;
 					}
 					//commands without windows don't lock the display
-					if(children[u].mode == user){
-						x11_unlock(children[u].display_id);
+					if(commands[u].mode == user){
+						x11_unlock(commands[u].display_id);
 					}
-					fprintf(stderr, "Instance of %s stopped\n", children[u].name);
+					fprintf(stderr, "Instance of %s stopped\n", commands[u].name);
+					break;
+				}
+			}
+
+			for(u = 0; u < nwindows; u++){
+				if(windows[u].state != stopped && windows[u].instance == status){
+					windows[u].state = stopped;
+					fprintf(stderr, "Automated window %s terminated\n", windows[u].name);
+					break;
 				}
 			}
 		}
@@ -211,46 +222,42 @@ static int child_spawn(rpcd_child_t* child, command_instance_t* args){
 }
 
 size_t child_command_count(){
-	size_t u, rv = 0;
-	for(u = 0; u < nchildren; u++){
-		if(children[u].mode == user || children[u].mode == user_no_windows){
-			rv++;
-		}
-	}
-	return rv;
+	return ncommands;
 }
 
 rpcd_child_t* child_command_get(size_t index){
-	size_t u, c = 0;
-	for(u = 0; u < nchildren; u++){
-		if(children[u].mode == user || children[u].mode == user_no_windows){
-			if(c == index){
-				return children + u;
-			}
-			c++;
-		}
+	if(index < ncommands){
+		return commands + index;
 	}
 	return NULL;
 }
 
 rpcd_child_t* child_command_find(char* name){
 	size_t u;
-	for(u = 0; u < nchildren; u++){
-		if((children[u].mode == user || children[u].mode == user_no_windows)
-				&& !strcasecmp(name, children[u].name)){
-			return children + u;
+	for(u = 0; u < ncommands; u++){
+		if(!strcasecmp(name, commands[u].name)){
+			return commands + u;
 		}
+	}
+	return NULL;
+}
+
+size_t child_window_count(){
+	return nwindows;
+}
+
+rpcd_child_t* child_window_get(size_t index){
+	if(index < nwindows){
+		return windows + index;
 	}
 	return NULL;
 }
 
 rpcd_child_t* child_window_find(char* name){
 	size_t u;
-	for(u = 0; u < nchildren; u++){
-		if((children[u].mode != user && children[u].mode != user_no_windows)
-				&& children[u].name
-				&& !strcasecmp(name, children[u].name)){
-			return children + u;
+	for(u = 0; u < nwindows; u++){
+		if(!strcasecmp(name, windows[u].name)){
+			return windows + u;
 		}
 	}
 	return NULL;
@@ -471,6 +478,7 @@ done:
 }
 
 int child_match_window(size_t display_id, Window window, pid_t pid, char* title, char* name, char* class){
+	rpcd_child_t* match = NULL;
 	pid_t current_pid = pid;
 	size_t u, matched = 0;
 	enum {
@@ -482,33 +490,35 @@ int child_match_window(size_t display_id, Window window, pid_t pid, char* title,
 	} strategy = pid ? match_pid : match_title; //skip pid match if not available
 
 	for(; strategy < done; strategy++){
-		for(u = 0; u < nchildren && !matched; u++){
-			if(children[u].state == running
-					&& children[u].display_id == display_id){
+		for(u = 0; u < ncommands + nwindows && !matched; u++){
+			match = (u < ncommands) ? commands + u : windows + (u - ncommands);
+
+			if(match->state == running
+					&& match->display_id == display_id){
 				switch(strategy){
 					case match_pid:
-						if(children[u].instance == current_pid){
+						if(match->instance == current_pid){
 							matched = 1;
 							continue;
 						}
 						break;
 					case match_title:
-						if(title && children[u].filters[0] &&
-								!strcmp(children[u].filters[0], title)){
+						if(title && match->filters[0] &&
+								!strcmp(match->filters[0], title)){
 							matched = 1;
 							continue;
 						}
 						break;
 					case match_name:
-						if(name && children[u].filters[1] &&
-								!strcmp(children[u].filters[0], name)){
+						if(name && match->filters[1] &&
+								!strcmp(match->filters[0], name)){
 							matched = 1;
 							continue;
 						}
 						break;
 					case match_class:
-						if(class && children[u].filters[2] &&
-								!strcmp(children[u].filters[2], class)){
+						if(class && match->filters[2] &&
+								!strcmp(match->filters[2], class)){
 							matched = 1;
 							continue;
 						}
@@ -522,7 +532,6 @@ int child_match_window(size_t display_id, Window window, pid_t pid, char* title,
 		}
 
 		if(matched){
-			u--;
 			break;
 		}
 
@@ -539,18 +548,18 @@ int child_match_window(size_t display_id, Window window, pid_t pid, char* title,
 	}
 
 	if(matched){
-		children[u].windows = realloc(children[u].windows, (children[u].nwindows + 1) * sizeof(Window));
-		if(!children[u].windows){
-			children[u].nwindows = 0;
+		match->windows = realloc(match->windows, (match->nwindows + 1) * sizeof(Window));
+		if(!match->windows){
+			match->nwindows = 0;
 			fprintf(stderr, "Failed to allocate memory\n");
 			return 1;
 		}
-		children[u].windows[children[u].nwindows] = window;
-		children[u].nwindows++;
+		match->windows[match->nwindows] = window;
+		match->nwindows++;
 
 		fprintf(stderr, "Matched window %zu (%d, %s, %s, %s) on display %zu to child %zu (%s) using strategy %u, now at %zu windows\n",
 				window, pid, title ? title : "-none-", name ? name : "-none-",
-				class ? class : "-none-", display_id, u, children[u].name, strategy, children[u].nwindows);
+				class ? class : "-none-", display_id, u, match->name, strategy, match->nwindows);
 		return 0;
 	}
 
@@ -561,21 +570,23 @@ int child_match_window(size_t display_id, Window window, pid_t pid, char* title,
 
 int child_discard_window(size_t display_id, Window window){
 	size_t u, c;
+	rpcd_child_t* check = NULL;
 
-	for(u = 0; u < nchildren; u++){
-		if(children[u].display_id == display_id
-				&& children[u].nwindows > 0){
-			for(c = 0; c < children[u].nwindows; c++){
-				if(children[u].windows[c] == window){
-					children[u].windows[c] = 0;
+	for(u = 0; u < ncommands + nwindows; u++){
+		check = (u < ncommands) ? commands + u : windows + (u - ncommands);
+		if(check->display_id == display_id
+				&& check->nwindows > 0){
+			for(c = 0; c < check->nwindows; c++){
+				if(check->windows[c] == window){
+					check->windows[c] = 0;
 
 					//re-sort window array
-					for(c++; c < children[u].nwindows; c++){
-						children[u].windows[c - 1] = children[u].windows[c];
+					for(c++; c < check->nwindows; c++){
+						check->windows[c - 1] = check->windows[c];
 					}
 
-					children[u].nwindows--;
-					fprintf(stderr, "Dismissed window %zu for command %s, %zu left\n", window, children[u].name ? children[u].name : "-repatriated-", children[u].nwindows);
+					check->nwindows--;
+					fprintf(stderr, "Dismissed window %zu for command %s, %zu left\n", window, check->name ? check->name : "-repatriated-", check->nwindows);
 					return 0;
 				}
 			}
@@ -590,72 +601,102 @@ Window child_window(size_t display_id, size_t frame_id){
 	size_t u, stack_index = 0;
 	Window matched_window = 0;
 
-	for(u = 0; u < nchildren; u++){
-		if(children[u].display_id == display_id
-				&& children[u].frame_id == frame_id
-				&& children[u].state == running
-				&& children[u].nwindows > 0
-				&& children[u].order >= stack_index){
-			matched_window = children[u].windows[children[u].nwindows - 1];
+	for(u = 0; u < ncommands; u++){
+		if(commands[u].display_id == display_id
+				&& commands[u].frame_id == frame_id
+				&& commands[u].state == running
+				&& commands[u].nwindows > 0
+				&& commands[u].order >= stack_index){
+			matched_window = commands[u].windows[commands[u].nwindows - 1];
+		}
+	}
+
+	for(u = 0; !matched_window && u < nwindows; u++){
+		if(windows[u].display_id == display_id
+				&& windows[u].frame_id == frame_id
+				&& windows[u].state == running
+				&& windows[u].nwindows > 0
+				&& windows[u].order >= stack_index){
+			matched_window = windows[u].windows[windows[u].nwindows - 1];
 		}
 	}
 
 	return matched_window;
 }
 
-int child_repatriate(size_t display_id, size_t frame_id, Window window){
-	children = realloc(children, (nchildren + 1) * sizeof(rpcd_child_t));
-	if(!children){
+static rpcd_child_t* child_allocate_command(){
+	commands = realloc(commands, (ncommands + 1) * sizeof(rpcd_child_t));
+	if(!commands){
 		fprintf(stderr, "Failed to allocate memory\n");
-		nchildren = 0;
+		ncommands = 0;
+		return NULL;
+	}
+
+	child_init(commands + ncommands);
+	return commands + ncommands++;
+}
+
+static rpcd_child_t* child_allocate_window(){
+	windows = realloc(windows, (nwindows + 1) * sizeof(rpcd_child_t));
+	if(!windows){
+		fprintf(stderr, "Failed to allocate memory\n");
+		nwindows = 0;
+		return NULL;
+	}
+
+	child_init(windows + nwindows);
+	return windows + nwindows++;
+}
+
+int child_repatriate(size_t display_id, size_t frame_id, Window window){
+	rpcd_child_t* rep = child_allocate_window();
+
+	if(!rep){
 		return 1;
 	}
-	child_init(children + nchildren);
 
 	//order implicitly set to 0
-	children[nchildren].windows = malloc(sizeof(Window));
-	if(!children[nchildren].windows){
+	rep->windows = malloc(sizeof(Window));
+	if(!rep->windows){
 		fprintf(stderr, "Failed to allocate memory\n");
+		//implicitly forget the window
+		nwindows--;
 		return 1;
 	}
 
-	children[nchildren].nwindows = 1;
-	children[nchildren].windows[0] = window;
-	children[nchildren].mode = repatriated;
-	children[nchildren].display_id = display_id;
-	children[nchildren].frame_id = frame_id;
-	children[nchildren].state = running;
-
-	nchildren++;
+	rep->nwindows = 1;
+	rep->windows[0] = window;
+	rep->mode = repatriated;
+	rep->display_id = display_id;
+	rep->frame_id = frame_id;
+	rep->state = running;
 	return 0;
 }
 
 int child_new_command(char* name){
 	size_t u;
+	rpcd_child_t* cmd = NULL;
 
-	for(u = 0; u < nchildren; u++){
-		if((children[u].mode == user || children[u].mode == user_no_windows) && 
-				!strcasecmp(children[u].name, name)){
+	for(u = 0; u < ncommands; u++){
+		if(!strcasecmp(commands[u].name, name)){
 			fprintf(stderr, "Command %s already defined\n", name);
 			return 1;
 		}
 	}
 
-	children = realloc(children, (nchildren + 1) * sizeof(rpcd_child_t));
-	if(!children){
-		nchildren = 0;
-		fprintf(stderr, "Failed to allocate memory\n");
+	cmd = child_allocate_command();
+	if(!cmd){
 		return 1;
 	}
 
-	child_init(children + nchildren);
-	children[nchildren].name = strdup(name);
-	if(!children[nchildren].name){
+	cmd->name = strdup(name);
+	if(!cmd->name){
 		fprintf(stderr, "Failed to allocate memory\n");
+		//forget the command
+		ncommands--;
 		return 1;
 	}
 
-	nchildren++;
 	return 0;
 }
 
@@ -663,9 +704,9 @@ int child_config_command(char* option, char* value){
 	size_t u;
 	argument_type new_type = arg_string;
 	char* token = NULL;
-	rpcd_child_t* last = children + (nchildren - 1);
+	rpcd_child_t* last = commands + (ncommands - 1);
 
-	if(!children){
+	if(!commands){
 		fprintf(stderr, "No commands defined yet\n");
 		return 1;
 	}
@@ -780,32 +821,48 @@ int child_config_command(char* option, char* value){
 
 int child_ok(){
 	size_t u;
-	if(!children){
-		fprintf(stderr, "No children defined, continuing\n");
-		return 0;
-	}
+	rpcd_child_t* last = NULL;
 
-	rpcd_child_t* last = children + (nchildren - 1);
-
-	//repatriated windows have neither name or command set
-	if(last->mode != repatriated
-				&& (!last->name || !last->command)){
-		fprintf(stderr, "Child definition has no name or command specified\n");
-		return 1;
-	}
-
-	for(u = 0; u < last->nargs; u++){
-		if(!last->args[u].name){
-			fprintf(stderr, "User argument to command %s has no name\n", last->name);
+	if(commands){
+		last = commands + (ncommands - 1);
+		if(!last->name){
+			fprintf(stderr, "Command defined without name\n");
 			return 1;
 		}
-
-		if(last->args[u].type == arg_enum 
-				&& !(last->args[u].additional && last->args[u].additional[0])){
-			fprintf(stderr, "Enum arguments to command %s require at least one option\n", last->name);
+		if(!last->command){
+			fprintf(stderr, "Command %s missing command definition\n", last->name);
 			return 1;
 		}
+	
+		for(u = 0; u < last->nargs; u++){
+			if(!last->args[u].name){
+				fprintf(stderr, "User argument to command %s has no name\n", last->name);
+				return 1;
+			}
+
+			if(last->args[u].type == arg_enum 
+					&& !(last->args[u].additional && last->args[u].additional[0])){
+				fprintf(stderr, "Enum arguments to command %s require at least one option\n", last->name);
+				return 1;
+			}
+		}
 	}
+
+	if(windows){
+		last = windows + (nwindows - 1);
+		//repatriated windows have neither name or command set
+		if(last->mode != repatriated){
+			if(!last->name){
+				fprintf(stderr, "Window defined without name\n");
+				return 1;
+			}
+			if(!last->command){
+				fprintf(stderr, "Window %s missing command definition\n", last->name);
+				return 1;
+			}
+		}
+	}
+
 	return 0;
 }
 
@@ -815,19 +872,34 @@ void child_cleanup(){
 	//stop all executing instances
 	while(!done){
 		done = 1;
-		for(u = 0; u < nchildren; u++){
-			if(children[u].state != stopped){
-				child_stop(children + u);
+		for(u = 0; u < ncommands; u++){
+			if(commands[u].state != stopped){
+				child_stop(commands + u);
+				done = 0;
+			}
+		}
+
+		for(u = 0; u < nwindows; u++){
+			if(windows[u].state != stopped){
+				child_stop(windows + u);
 				done = 0;
 			}
 		}
 		child_reap();
 	}
 
-	for(u = 0; u < nchildren; u++){
-		child_free(children + u);
+	for(u = 0; u < ncommands; u++){
+		child_free(commands + u);
 	}
-	free(children);
-	nchildren = 0;
-	children = NULL;
+
+	for(u = 0; u < nwindows; u++){
+		child_free(windows + u);
+	}
+
+	free(commands);
+	ncommands = 0;
+	commands = NULL;
+	free(windows);
+	nwindows = 0;
+	windows = NULL;
 }
