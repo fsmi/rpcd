@@ -17,6 +17,7 @@ static enum {
 	conf_x11,
 	conf_layout,
 	conf_command,
+	conf_window,
 	conf_control,
 	conf_variables,
 	conf_automation
@@ -64,7 +65,9 @@ static int config_handle_line(char* file, char* line, size_t line_no){
 		case conf_layout:
 			return layout_config(line, argument);
 		case conf_command:
-			return child_config_command(line, argument);
+			return child_config(line, argument);
+		case conf_window:
+			return child_config(line, argument);
 		case conf_control:
 			return control_config(line, argument);
 		case conf_variables:
@@ -104,6 +107,7 @@ int config_parse(char* cfg_file){
 			
 			if((config_state == conf_layout && layout_ok())
 					|| (config_state == conf_command && child_ok())
+					|| (config_state == conf_window && child_ok())
 					|| (config_state == conf_x11 && x11_ok())){
 				fprintf(stderr, "%s:%zu Cannot switch section before the previous configuration is done\n", cfg_file, line_no);
 				goto bail;
@@ -137,10 +141,17 @@ int config_parse(char* cfg_file){
 			}
 			else if(!strncmp(line, "[command ", 9)){
 				line[strlen(line) - 1] = 0;
-				if(child_new_command(line + 9)){
+				if(child_new(line + 9, 1)){
 					goto bail;
 				}
 				config_state = conf_command;
+			}
+			else if(!strncmp(line, "[window ", 8)){
+				line[strlen(line) - 1] = 0;
+				if(child_new(line + 8, 0)){
+					goto bail;
+				}
+				config_state = conf_window;
 			}
 			else{
 				fprintf(stderr, "%s:%zu Unknown section keyword\n", cfg_file, line_no);

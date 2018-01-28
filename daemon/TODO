@@ -8,7 +8,6 @@ Somehow, invalid FDs are passed into API handling
 
 Documentation
 control implementation
-Implement [window type creation in command
 Distinct variable space: commands vs windows
 Pass window variables in env
 Window filter configuration
@@ -16,6 +15,8 @@ Window matching heuristic
 Reorder non-exported procedures
 Set command order property on start/stop
 Window startup iteration counter
+Split child functionality into 2 modules
+Restart window on variable change?
 
 Assign user commands a higher stack order than windows => No, only automate when not busy
 Should layout loading mark the display busy => No

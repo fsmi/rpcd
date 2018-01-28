@@ -72,7 +72,11 @@ except for layout names, which are unique per display.
 |			| windows	| none			| `no`			| Indicates that the command will not open an X window |
 |			| chdir		| none			| `/home/foo/bar/`	| Working directory to execute the command in |
 |			| `VariableName`| none			| `string Arg1`		| Command argument variable specification (see below) |
+|[window `name`]	| command	| none			| `/bin/xecho %AutoVar`	| Command executed to start the window | required
+|			| chdir		| none			| `/home/foo/baz`	| Working directory to start the window in |
+|			| mode		| `lazy`		| `ondemand`		| Window swap/kill mode (see below)	|
 
+### User commands
 Commands may have any number of user-specifiable arguments, which replace the `%Variable` placeholders in the command specification.
 Argument configuration is specified in command sections by assigning configuration to an option with the same name, ie to configure the
 variable `%Var1`, you assign the specification to the option `Var1`.
@@ -83,6 +87,25 @@ options. For `string` arguments, an optional hint may be supplied, which is disp
 
 Placeholders for which no argument configuration is specified are not replaced.
 
+### Automated windows
+Windows are automatable components displayed on the screen, controlled by an automation script. This feature is optional, but can be used
+to display relevant content based on external input.
+
+Variables (for example `%AutoVar`) used as parameters are replaced with their value before execution. Note that windows do not share a variable
+space with commands, with the window variables being controllable via external inputs, not API requests. These *automation variables* are pre-defined
+using a `[variables]` section and may be used for controlling automation as well as executing windows. Automated windows are additionally passed
+the entire automation variable space in their environment.
+
+Variables reflect the content they has when the window was started, as updates at a later time are not possible.
+A method to restart a window on variable change may be implemented in the future.
+
+The following swap/kill modes are supported for windows:
+
+* default (`lazy`): The process is started when required, and stopped only when when shutting down or mapping the window to another X server (necessitating an update of the environment).
+* `ondemand`: Start the process when the window is mapped, terminate the process when it is unmapped.
+* `keepalive`: Start the process on rpcd startup, stop only when shutting down or switching X servers.
+
+The automation script parser is currently a work in progress.
 ## Usage (Web Interface)
 
 * To run a command

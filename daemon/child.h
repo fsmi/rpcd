@@ -22,7 +22,7 @@ typedef enum /*_child_mode_t*/ {
 	user_no_windows = 1, /*user command without windows*/
 	ondemand, /*start when required, stop when not*/
 	keepalive, /*start on initialization, stop only when required*/
-	lazy, /*start when required, stop only when required*/
+	lazy, /*start when required, stop only when required, default*/
 	repatriated /*can't be started, should not be stopped - used as last resort mapping*/
 } child_mode_t;
 
@@ -79,7 +79,7 @@ size_t child_window_count();
 rpcd_child_t* child_window_get(size_t index);
 rpcd_child_t* child_window_find(char* name);
 
-int child_new_command(char* name);
-int child_config_command(char* option, char* value);
+int child_new(char* name, size_t command);
+int child_config(char* option, char* value);
 int child_ok();
 void child_cleanup();

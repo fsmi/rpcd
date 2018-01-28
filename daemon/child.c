@@ -16,6 +16,7 @@ static size_t ncommands = 0;
 static rpcd_child_t* commands = NULL;
 static size_t nwindows = 0;
 static rpcd_child_t* windows = NULL;
+static size_t last_command = 0;
 extern char** environ;
 
 int child_active(rpcd_child_t* child){
@@ -645,6 +646,7 @@ static rpcd_child_t* child_allocate_window(){
 	}
 
 	child_init(windows + nwindows);
+	windows[nwindows].mode = lazy;
 	return windows + nwindows++;
 }
 
@@ -673,41 +675,49 @@ int child_repatriate(size_t display_id, size_t frame_id, Window window){
 	return 0;
 }
 
-int child_new_command(char* name){
-	size_t u;
-	rpcd_child_t* cmd = NULL;
+int child_new(char* name, size_t command){
+	size_t u, n = command ? ncommands : nwindows;
+	rpcd_child_t* pool = command ? commands : windows;
+	rpcd_child_t* child = NULL;
 
-	for(u = 0; u < ncommands; u++){
-		if(!strcasecmp(commands[u].name, name)){
-			fprintf(stderr, "Command %s already defined\n", name);
+	for(u = 0; u < n; u++){
+		if(pool[u].name && !strcasecmp(pool[u].name, name)){
+			fprintf(stderr, "%s %s already defined\n", command ? "Command" : "Window", name);
 			return 1;
 		}
 	}
 
-	cmd = child_allocate_command();
-	if(!cmd){
+	child = command ? child_allocate_command() : child_allocate_window();
+	if(!child){
 		return 1;
 	}
 
-	cmd->name = strdup(name);
-	if(!cmd->name){
+	child->name = strdup(name);
+	if(!child->name){
 		fprintf(stderr, "Failed to allocate memory\n");
-		//forget the command
-		ncommands--;
+		//forget the new child
+		if(command){
+			ncommands--;
+		}
+		else{
+			nwindows--;
+		}
 		return 1;
 	}
 
+	last_command = command;
 	return 0;
 }
 
-int child_config_command(char* option, char* value){
+int child_config(char* option, char* value){
 	size_t u;
 	argument_type new_type = arg_string;
 	char* token = NULL;
-	rpcd_child_t* last = commands + (ncommands - 1);
+	rpcd_child_t* last = last_command ? (commands + (ncommands - 1)) : (windows + (nwindows - 1));
 
-	if(!commands){
-		fprintf(stderr, "No commands defined yet\n");
+	if((last_command && !commands)
+			|| (!last_command && !windows)){
+		fprintf(stderr, "No children to configure yet\n");
 		return 1;
 	}
 
@@ -716,16 +726,6 @@ int child_config_command(char* option, char* value){
 		if(!last->command){
 			fprintf(stderr, "Failed to allocate memory\n");
 			return 1;
-		}
-		return 0;
-	}
-	else if(!strcmp(option, "description")){
-		last->description = strdup(value);
-		return 0;
-	}
-	else if(!strcmp(option, "windows")){
-		if(!strcmp(value, "no")){
-			last->mode = user_no_windows;
 		}
 		return 0;
 	}
@@ -738,6 +738,38 @@ int child_config_command(char* option, char* value){
 		return 0;
 	}
 
+	//TODO filters
+
+	//window-specific
+	if(!last_command){
+		if(!strcmp(option, "mode")){
+			if(!strcmp(value, "ondemand")){
+				last->mode = ondemand;
+			}
+			else if(!strcmp(value, "keepalive")){
+				last->mode = keepalive;
+			}
+			else{
+				fprintf(stderr, "Unknown window mode %s\n", value);
+				return 1;
+			}
+			return 0;
+		}
+		fprintf(stderr, "Unknown option %s for type window\n", option);
+		return 1;
+	}
+
+	//command-specific
+	if(!strcmp(option, "description")){
+		last->description = strdup(value);
+		return 0;
+	}
+	else if(!strcmp(option, "windows")){
+		if(!strcmp(value, "no")){
+			last->mode = user_no_windows;
+		}
+		return 0;
+	}
 	//add an argument to the last command
 	if(strlen(option) < 1){
 		fprintf(stderr, "Argument to command %s is missing name\n", last->name);
@@ -815,7 +847,6 @@ int child_config_command(char* option, char* value){
 	}
 
 	last->nargs++;
-
 	return 0;
 }
 
