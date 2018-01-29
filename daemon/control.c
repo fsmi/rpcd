@@ -220,7 +220,7 @@ int control_config_variable(char* name, char* value){
 		return 1;
 	}
 
-	if(isdigit(name[0]) || name[0] == '-'){
+	if(isdigit(name[0]) || name[0] == '-' || name[0] == '"'){
 		fprintf(stderr, "Invalid control variable name: %s\n", name);
 		return 1;
 	}

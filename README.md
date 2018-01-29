@@ -7,6 +7,9 @@ enabling them to start/stop a set of previously approved processes.
 This allows non-privileged users to run eg. games or view videos on a big
 screen without having to give them local shell access to start the software.
 
+Additionally, it provides an automation controller to update the display contents
+based on external factors.
+
 [![Coverity Scan Build Status](https://scan.coverity.com/projects/14561/badge.svg)](https://scan.coverity.com/projects/14561)
 
 ## Components
@@ -16,7 +19,9 @@ This project consists of several modules
 ### daemon
 
 This tool interacts with ratpoison and the underlying Linux system, loading layouts
-and managing processes. It provides an API via HTTP, which is detailed in [endpoints.txt](endpoints.txt)
+and managing processes. It provides an external API via HTTP, which is detailed in [endpoints.txt](endpoints.txt).
+Additionally, the automated control feature provides an optional internal API, which
+is described in detail in a later section.
 
 ### webclient
 
@@ -62,6 +67,9 @@ except for layout names, which are unique per display.
 | Section		| Option	| Default value		| Example value		| Description				| Notes
 |-----------------------|---------------|-----------------------|-----------------------|---------------------------------------|------
 |[api]			| bind		| none			| `10.23.0.1 8080`	| HTTP API host and port		|
+|[control]		| socket	| none			| `/tmp/rpcd`		| Unix domain socket for automation control | Created if missing
+|			| fifo		| none			| `/tmp/rpcd-fifo`	| FIFO for automation control		| Created if missing
+|[variables]		| `VariableName`| none			| `DefaultValue`	|
 |[x11 `name`]		| display	| `:0`			| `:0.0`		| X11 display identifier to use		|
 |			| deflayout	| none			| `layout_name`		| Layout to apply on reset		|
 |			| repatriate	| none			| `yes`			| Store current window-frame mapping	|
@@ -87,15 +95,34 @@ options. For `string` arguments, an optional hint may be supplied, which is disp
 
 Placeholders for which no argument configuration is specified are not replaced.
 
-### Automated windows
-Windows are automatable components displayed on the screen, controlled by an automation script. This feature is optional, but can be used
-to display relevant content based on external input.
+### Display automation
+`rpcd` can be used to update the contents of the managed displays based on an automation script. This feature is optional.
+Automated windows are only displayed when a display is not busy with user commands. The windows to be shown can be started and
+stopped by `rpcd` automatically, based on the automation script and current variable values.
 
-Variables (for example `%AutoVar`) used as parameters are replaced with their value before execution. Note that windows do not share a variable
-space with commands, with the window variables being controllable via external inputs, not API requests. These *automation variables* are pre-defined
-using a `[variables]` section and may be used for controlling automation as well as executing windows. Automated windows are additionally passed
-the entire automation variable space in their environment.
+The automation script parser is currently a work in progress and will be documented here at a later time.
 
+#### Automation variables
+Automation variables occupy variable space distinct from user command variables. They may be set via the control inputs or the configuration
+file. All spawned window processes receive the entire automation variable space in their environment. Variable arguments to `window`
+processes also refer to the automated variable space.
+
+Automation variable names may not start with a dash (*-*), double quote (*"*) or a number, to be able to distinguish them from constants.
+
+#### Automation input
+
+External processes may update the automation variable space and trigger a re-evaluation of the automation script by using one of the
+configured control inputs (Unix domain socket or FIFO).
+
+To update a variable, write or send a *`\n`*-terminated line of the following format:
+
+```
+VariableName=Value
+```
+
+#### Automated windows
+
+Variables (for example `%AutoVar`) used as parameters are replaced with their value (from the automation variable space) before execution.
 Variables reflect the content they has when the window was started, as updates at a later time are not possible.
 A method to restart a window on variable change may be implemented in the future.
 
@@ -105,7 +132,6 @@ The following swap/kill modes are supported for windows:
 * `ondemand`: Start the process when the window is mapped, terminate the process when it is unmapped.
 * `keepalive`: Start the process on rpcd startup, stop only when shutting down or switching X servers.
 
-The automation script parser is currently a work in progress.
 ## Usage (Web Interface)
 
 * To run a command
@@ -184,6 +210,19 @@ deployments, this option may be omitted and the first display defined in the con
 In the same manner, layouts may still be defined with the old configuration syntax (omitting the display a layout
 is defined on). The default display will then be used for the layout.
 
+### Mapping windows to processes
+
+There is no inherently reliable way for an external process like `rpcd` to map X11 window IDs to the processes
+that spawned them. This is a known problem, for which [the `_NET_WM_PID` protocol](https://specifications.freedesktop.org/wm-spec/1.3/ar01s05.html)
+was created. For child processes (commands and automated windows) supporting this protocol (which is most),
+all features work as intended. For processes not supporting it, a "window filter" feature is intended to be implemented
+at a later stage. Sadly, some applications refuse to set any identifying information within the window properties.
+If a user command is running, `rpcd` may assign such a window to the last command started as a last-resort heuristic.
+The following features may be broken for such processes:
+
+* Loading a layout while the command is running may hide the window without terminating the command
+* Display automation may not run even though there is no window displayed, as the display is still considered busy until the command terminates
+
 ## Caveats
 
 * Special characters and spaces in layout/command names currently cause problems. This may be fixed
@@ -191,3 +230,5 @@ in the (near) future.
 * `string` arguments allow free-form user supplied data to be passed to spawned commands, presenting
 a possible security risk if not properly sanitized. Properly checking and sanitizing user input is
 the responsibility of the called command.
+* All programs started by `rpcd` *should* support [the `_NET_WM_PID` protocol](https://specifications.freedesktop.org/wm-spec/1.3/ar01s05.html)
+for `rpcd` to be able to reliably map X11 windows to child processes.
