@@ -1,4 +1,3 @@
-Commands are not searched in PATH
 Run automation on startup / after reset
 Default automation: load default layout
 
@@ -11,7 +10,6 @@ control implementation
 Distinct variable space: commands vs windows
 Pass window variables in env
 Window filter configuration
-Window matching heuristic
 Reorder non-exported procedures
 Set command order property on start/stop
 Window startup iteration counter

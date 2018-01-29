@@ -123,14 +123,14 @@ VariableName=Value
 #### Automated windows
 
 Variables (for example `%AutoVar`) used as parameters are replaced with their value (from the automation variable space) before execution.
-Variables reflect the content they has when the window was started, as updates at a later time are not possible.
+Variables reflect the content they had when the window was started, as updates at a later time are not possible.
 A method to restart a window on variable change may be implemented in the future.
 
 The following swap/kill modes are supported for windows:
 
 * default (`lazy`): The process is started when required, and stopped only when when shutting down or mapping the window to another X server (necessitating an update of the environment).
 * `ondemand`: Start the process when the window is mapped, terminate the process when it is unmapped.
-* `keepalive`: Start the process on rpcd startup, stop only when shutting down or switching X servers.
+* `keepalive`: Start the process on `rpcd` startup, stop only when shutting down or switching X servers.
 
 ## Usage (Web Interface)
 

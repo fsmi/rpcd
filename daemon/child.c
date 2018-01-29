@@ -17,7 +17,6 @@ static rpcd_child_t* commands = NULL;
 static size_t nwindows = 0;
 static rpcd_child_t* windows = NULL;
 static size_t last_command = 0;
-extern char** environ;
 
 int child_active(rpcd_child_t* child){
 	return child->state == running;
@@ -176,7 +175,7 @@ static void child_command_proc(rpcd_child_t* child, command_instance_t* args){
 	}
 
 	//exec into command
-	if(execve(argv[0], argv, environ)){
+	if(execvp(argv[0], argv)){
 		fprintf(stderr, "Failed to execute child process (%s): %s\n", argv[0], strerror(errno));
 		exit(EXIT_FAILURE);
 	}
@@ -487,6 +486,7 @@ int child_match_window(size_t display_id, Window window, pid_t pid, char* title,
 		match_title,
 		match_name,
 		match_class,
+		match_heuristic,
 		done
 	} strategy = pid ? match_pid : match_title; //skip pid match if not available
 
@@ -524,6 +524,12 @@ int child_match_window(size_t display_id, Window window, pid_t pid, char* title,
 							continue;
 						}
 						break;
+					case match_heuristic:
+						if(match->mode == user){
+							fprintf(stderr, "Using heuristic to match this window, please notify the developers\n");
+							matched = 1;
+							continue;
+						}
 					case done:
 						fprintf(stderr, "Window matching reached invalid strategy\n");
 						break;
