@@ -66,21 +66,21 @@ except for layout names, which are unique per display.
 
 | Section		| Option	| Default value		| Example value		| Description				| Notes
 |-----------------------|---------------|-----------------------|-----------------------|---------------------------------------|------
-|[api]			| bind		| none			| `10.23.0.1 8080`	| HTTP API host and port		|
-|[control]		| socket	| none			| `/tmp/rpcd`		| Unix domain socket for automation control | Created if missing
+|`[api]`		| bind		| none			| `10.23.0.1 8080`	| HTTP API host and port		|
+|`[control]`		| socket	| none			| `/tmp/rpcd`		| Unix domain socket for automation control | Created if missing
 |			| fifo		| none			| `/tmp/rpcd-fifo`	| FIFO for automation control		| Created if missing
-|[variables]		| `VariableName`| none			| `DefaultValue`	|
-|[x11 `name`]		| display	| `:0`			| `:0.0`		| X11 display identifier to use		|
+|`[variables]`		| `VariableName`| none			| `DefaultValue`	| Define an automation variable as well as its default value |
+|`[x11 *name*]`		| display	| `:0`			| `:0.0`		| X11 display identifier to use		|
 |			| deflayout	| none			| `layout_name`		| Layout to apply on reset		|
 |			| repatriate	| none			| `yes`			| Store current window-frame mapping	|
-|[layout `name`]	| file		| none			| `path/to/file.sfdump` | Path to a ratpoison `sfdump`		| Either `read-layout` or `file` is required
+|`[layout *name*]`	| file		| none			| `path/to/file.sfdump` | Path to a ratpoison `sfdump`		| Either `read-layout` or `file` is required
 |			| read-layout	| none			| `yes`			| Read the layout data from a running `ratpoison`|
-|[command `name`]	| description	| none			| `What does it do`	| Command help/description		|
+|`[command *name*]`	| description	| none			| `What does it do`	| Command help/description		|
 |			| command	| none			| `/bin/echo %Var1`	| Command to execute including arguments| required
 |			| windows	| none			| `no`			| Indicates that the command will not open an X window |
 |			| chdir		| none			| `/home/foo/bar/`	| Working directory to execute the command in |
 |			| `VariableName`| none			| `string Arg1`		| Command argument variable specification (see below) |
-|[window `name`]	| command	| none			| `/bin/xecho %AutoVar`	| Command executed to start the window | required
+|`[window *name*]`	| command	| none			| `/bin/xecho %AutoVar`	| Command executed to start the window | required
 |			| chdir		| none			| `/home/foo/baz`	| Working directory to start the window in |
 |			| mode		| `lazy`		| `ondemand`		| Window swap/kill mode (see below)	|
 
