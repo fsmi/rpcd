@@ -530,6 +530,7 @@ int child_match_window(size_t display_id, Window window, pid_t pid, char* title,
 							matched = 1;
 							continue;
 						}
+						break;
 					case done:
 						fprintf(stderr, "Window matching reached invalid strategy\n");
 						break;
