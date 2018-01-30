@@ -177,3 +177,7 @@ bail:
 
 	return rv || child_ok() || control_ok() || layout_ok() || api_ok() || x11_ok();
 }
+
+void config_cleanup(){
+	config_state = conf_none;
+}

@@ -180,6 +180,15 @@ store the output to a file.
 
 Some of the features may not be immediately obvious or may have interesting background information.
 
+### Reloading the daemon configuration
+When the daemon receives `SIGHUP`, it will try to reload the configuration file it was started with.
+When a user command is running, the configuration reload is postponed until the command terminates.
+Upon receiving a second `SIGHUP` while waiting for command termination, the configuration is force-reloaded,
+which will terminate all running commands.
+
+Should the reloaded configuration contain an error, `rpcd` will not shut down but respond as if no
+configuration would have been read. This implies that the daemon will not respond on any API endpoint.
+
 ### Process termination
 
 When sending a `stop` command to the API, rpcd first sends SIGTERM to the process group it spawned for the

@@ -631,4 +631,5 @@ void x11_cleanup(){
 	free(displays);
 	ndisplays = 0;
 	displays = NULL;
+	init_done = 0;
 }
