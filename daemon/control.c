@@ -11,8 +11,7 @@
 #include <errno.h>
 #include <ctype.h>
 
-#include "x11.h"
-#include "layout.h"
+#include "child.h"
 
 static size_t nvars = 0;
 static variable_t* vars = NULL;
@@ -22,7 +21,19 @@ static control_input_t* fds = NULL;
 
 static size_t noperations = 0;
 static automation_operation_t* operations = NULL;
-static display_status_t* display_status = NULL;
+static display_config_t* display_status = NULL;
+
+static ssize_t control_variable_find(char* name){
+	ssize_t u;
+
+	for(u = 0; u < nvars; u++){
+		if(!strcasecmp(name, vars[u].name)){
+			return u;
+		}
+	}
+
+	return -1;
+}
 
 static int control_input(input_type_t type, int fd){
 	size_t u;
@@ -123,8 +134,30 @@ static int control_accept(control_input_t* sock){
 }
 
 static int control_command(char* command){
-	fprintf(stderr, "Control command: %s\n", command);
-	return 0;
+	ssize_t var;
+	char* sep = NULL;
+	if(!strchr(command, '=')){
+		fprintf(stderr, "Invalid control command received: %s\n", command);
+		return 1;
+	}
+
+	sep = strchr(command, '=');
+	*sep++ = 0;
+
+	var = control_variable_find(command);
+	if(var < 0){
+		fprintf(stderr, "Variable %s not found for control command\n", command);
+		return 0;
+	}
+
+	free(vars[var].value);
+	vars[var].value = strdup(sep);
+	if(!vars[var].value){
+		fprintf(stderr, "Failed to allocate memory\n");
+		return 1;
+	}
+
+	return control_run_automation();
 }
 
 static int control_data(control_input_t* client){
@@ -202,27 +235,23 @@ int control_config(char* option, char* value){
 	return 1;
 }
 
-static ssize_t control_variable_find(char* name){
-	ssize_t u;
-
-	for(u = 0; u < nvars; u++){
-		if(!strcasecmp(name, vars[u].name)){
-			return u;
-		}
-	}
-
-	return -1;
-}
-
 int control_config_variable(char* name, char* value){
+	size_t u;
 	if(strlen(name) < 1){
 		fprintf(stderr, "Control variable name unset\n");
 		return 1;
 	}
 
-	if(isdigit(name[0]) || name[0] == '-' || name[0] == '"'){
+	if(isdigit(name[0])){
 		fprintf(stderr, "Invalid control variable name: %s\n", name);
 		return 1;
+	}
+
+	for(u = 0; u < strlen(name); u++){
+		if(!isascii(name[u]) || !(isalnum(name[u]) || name[u] == '_')){
+			fprintf(stderr, "Invalid control variable name: %s\n", name);
+			return 1;
+		}
 	}
 
 	if(control_variable_find(name) >= 0){
@@ -306,7 +335,7 @@ static automation_operation_t* control_new_operation(){
 
 int control_run_automation(){
 	size_t u;
-	layout_t* layout = NULL;
+	automation_operation_t* op = NULL;
 
 	//early exit
 	if(!noperations){
@@ -315,41 +344,34 @@ int control_run_automation(){
 
 	if(!display_status){
 		//initialize display status list
-		display_status = calloc(x11_count(), sizeof(display_status_t));
+		display_status = calloc(x11_count(), sizeof(display_config_t));
+		if(!display_status){
+			fprintf(stderr, "Failed to allocate memory\n");
+			return 1;
+		}
 	}
 
 	//set initial display states
 	for(u = 0; u < x11_count(); u++){
-		display_status[u] = x11_get(u)->busy ? display_busy : display_ready;
+		display_status[u].display = x11_get(u);
+		display_status[u].status = x11_get(u)->busy ? display_busy : display_ready;
+		display_status[u].layout = NULL;
 	}
 
+	//run the script to obtain the requested configuration
 	for(u = 0; u < noperations; u++){
-		switch(operations[u].op){
+		op = operations + u;
+		switch(op->op){
 			case op_noop:
 				break;
 			case op_layout_default:
-				if(display_status[operations[u].display_id] == display_ready){
-					if(x11_default_layout(operations[u].display_id)){
-						return 1;
-					}
-				}
+				display_status[op->display_id].layout = display_status[op->display_id].display->default_layout;
 				break;
 			case op_layout:
-				if(display_status[operations[u].display_id] == display_ready){
-					//this works because the automation parser resolves layouts at parse time
-					layout = layout_get(operations[u].operand_numeric);
-					if(x11_activate_layout(layout)){
-						fprintf(stderr, "Automation failed to activate layout %s, exiting\n", layout->name);
-						return 1;
-					}
-				}
+				display_status[op->display_id].layout = layout_find(op->display_id, op->operand_a);
 				break;
 			case op_assign:
-				if(display_status[operations[u].display_id] != display_busy){
-					//TODO stop command if on different display
-					//TODO start command if not started
-					//if window not ready, set display not ready
-				}
+				//TODO
 				break;
 			case op_skip:
 				u += operations[u].operand_numeric;
@@ -362,72 +384,259 @@ int control_run_automation(){
 				break;
 			case op_stop:
 				fprintf(stderr, "Automation stopped by operation\n");
-				return 0;
+				goto apply_results;
 		}
 	}
 
 	fprintf(stderr, "Automation stopped by end of instruction list\n");
+
+apply_results:
+	//start requested windows
+	//if(display_status[operations[u].display_id].status != display_busy){
+		//TODO stop command if on different display
+		//TODO start command if not started
+		//TODO if replacing ondemand window, kill old occupant
+		//if window not ready, set display not ready
+	//}
+	//apply requested layouts
+	for(u = 0; u < x11_count(); u++){
+		if(display_status[u].status == display_ready
+				&& display_status[u].layout){
+			if(x11_activate_layout(display_status[u].layout)){
+				fprintf(stderr, "Automation failed to activate layout %s on display %zu, exiting\n", display_status[u].layout->name, u);
+				return 1;
+			}
+		}
+	}
+
 	return 0;
 }
 
+static int control_parse_layout(automation_operation_t* op, char* spec){
+	//default display
+	op->display_id = 0;
+	if(strchr(spec, '/')){
+		*strchr(spec, '/') = 0;
+		op->display_id = x11_find_id(spec);
+		spec += strlen(spec) + 1;
+	}
+
+	if(layout_find(op->display_id, spec)){
+		op->operand_a = strdup(spec);
+		if(!op->operand_a){
+			fprintf(stderr, "Failed to allocate memory\n");
+			return 1;
+		}
+		op->op = op_layout;
+		return 0;
+	}
+
+	fprintf(stderr, "No layout %s defined on display %zu\n", spec, op->display_id);
+	return 1;
+}
+
+static int control_parse_assign(automation_operation_t* op, char* spec){
+	char* dest = strchr(spec, ' ');
+	op->display_id = 0;
+
+	if(!dest){
+		fprintf(stderr, "No frame destination for assign call\n");
+		return 1;
+	}
+
+	*dest++ = 0;
+
+	if(!child_window_find(spec)){
+		fprintf(stderr, "Window %s not defined as assignable\n", spec);
+		return 1;
+	}
+
+	if(strchr(dest, '/')){
+		*strchr(dest, '/') = 0;
+		op->display_id = x11_find_id(dest);
+		dest += strlen(dest) + 1;
+	}
+	op->operand_numeric = strtoul(dest, NULL, 10);
+
+	op->operand_a = strdup(spec);
+	if(!op->operand_a){
+		fprintf(stderr, "Failed to allocate memory\n");
+		return 1;
+	}
+
+	op->op = op_assign;
+	return 0;
+}
+
+static char* control_parse_operand(char* spec, size_t* resolve, char** operand){
+	*resolve = 1;
+	size_t end = 0;
+
+	if(!spec[0] || !isascii(spec[0]) || isblank(spec[0])){
+		fprintf(stderr, "Invalid conditional operand expression\n");
+		return NULL;
+	}
+
+	if(spec[0] == '"'){
+		*resolve = 0;
+		spec++;
+		//scan until quote end
+		for(end = 0; spec[end] && spec[end] != '"'; end++){
+		}
+
+		if(!spec[end]){
+			fprintf(stderr, "Unterminated quoted string in conditional expression\n");
+			return NULL;
+		}
+		
+		spec[end] = ' ';
+	}
+	else{
+		if(isdigit(spec[0])){
+			*resolve = 0;
+		}
+		for(end = 0; spec[end] && !isblank(spec[end]); end++){
+			if(!isascii(spec[end]) || !(isalnum(spec[end]) || spec[end] == '_')){
+				*resolve = 0;
+			}
+		}
+	}
+
+	*operand = calloc(end + 1, sizeof(char));
+	if(!*operand){
+		fprintf(stderr, "Failed to allocate memory\n");
+		return NULL;
+	}
+	strncpy(*operand, spec, end);
+
+	//assert that variables exist
+	if(*resolve && control_variable_find(*operand) < 0){
+		fprintf(stderr, "Conditional operand variable %s does not exist\n", *operand);
+		return NULL;
+	}
+	//advance until next graph
+	for(; spec[end] && isblank(spec[end]); end++){
+	}
+	return spec + end;
+}
+
+static int control_parse_conditional(automation_operation_t* op, char* spec){
+	char* body = strchr(spec, ',');
+	if(!body){
+		fprintf(stderr, "Empty conditional body\n");
+		return 1;
+	}
+	*body++ = 0;
+	for(; isspace(body[0]); body++){
+	}
+
+	if(!strncmp(spec, "not ", 4)){
+		op->negate = 1;
+		spec += 4;
+	}
+
+	if(!strncmp(spec, "empty ", 6)){
+		op->op = op_condition_empty;
+		spec += 6;
+	}
+
+	//parse operand a
+	spec = control_parse_operand(spec, &op->resolve_a, &op->operand_a);
+
+	if(!spec){
+		fprintf(stderr, "Failed to parse first operand\n");
+		op->op = op_noop;
+		return 1;
+	}
+
+	if(op->op == op_condition_empty){
+		goto parse_done;
+	}
+
+	switch(spec[0]){
+		case '>':
+			op->op = op_condition_greater;
+			break;
+		case '<':
+			op->op = op_condition_less;
+			break;
+		case '=':
+			op->op = op_condition_equals;
+			break;
+		default:
+			fprintf(stderr, "Unknown conditional expression: %c, next tokens %s\n", spec[0], spec);
+			op->op = op_noop;
+			return 1;
+	}
+
+	for(spec++; spec[0] && isspace(spec[0]); spec++){
+	}
+
+	spec = control_parse_operand(spec, &op->resolve_b, &op->operand_b);
+	if(!spec){
+		fprintf(stderr, "Failed to parse second operand\n");
+		op->op = op_noop;
+		return 1;
+	}
+
+parse_done:
+	//this is kind of yucky, but it works (unless the body contains another conditional...)
+	return control_config_automation(body);
+}
+
 int control_config_automation(char* line){
-	//TODO assert that all referenced variables exist
-	char* token = NULL;
 	automation_operation_t* op = control_new_operation();
 	if(!op){
 		return 1;
 	}
 
-	token = strtok(line, " ");
 	//empty lines and comments are handled by the config parser, but nevertheless
-	if(!token || strlen(token) == 0){
+	if(!strlen(line)){
 		fprintf(stderr, "Synthesized noop for empty line\n");
 		return 0;
 	}
 
-	if(!strcmp(token, "default")){
-		token = strtok(NULL, " ");
-		if(token){
-			op->display_id = x11_find_id(token);
-			op->op = op_layout_default;
+	if(!strncmp(line, "default ", 8)){
+		op->display_id = x11_find_id(line + 8);
+		op->op = op_layout_default;
+		return 0;
+	}
+	else if(!strncmp(line, "layout ", 7)){
+		if(control_parse_layout(op, line + 7)){
+			fprintf(stderr, "Failed to parse automation layout call\n");
+			return 1;
+		}
+		return 0;
+	}
+	else if(!strncmp(line, "assign ", 7)){
+		if(control_parse_assign(op, line + 7)){
+			fprintf(stderr, "Failed to parse automation assign call\n");
+			return 1;
+		}
+		return 0;
+	}
+	else if(!strncmp(line, "skip ", 5)){
+		op->operand_numeric = strtoul(line + 5, NULL, 10);
+		if(op->operand_numeric){
+			op->op = op_skip;
 			return 0;
 		}
+		fprintf(stderr, "Failed to parse automation skip operand\n");
+		return 1;
 	}
-	else if(!strcmp(token, "layout")){
-		token = strtok(NULL, " ");
-		if(token){
-			op->display_id = x11_find_id(token);
-			//TODO fetch layout id
-			//op->operand_numeric = 
-			//op->op = op_layout;
-			return 0;
-		}
-	}
-	else if(!strcmp(token, "assign")){
-		//TODO parse window assignment
-	}
-	else if(!strcmp(token, "skip")){
-		token = strtok(NULL, " ");
-		if(token){
-			op->operand_numeric = strtoul(token, NULL, 10);
-			if(op->operand_numeric){
-				op->op = op_skip;
-				return 0;
-			}
-			else{
-				fprintf(stderr, "Failed to parse skip operand\n");
-			}
-		}
-	}
-	else if(!strcmp(token, "done")){
+	else if(!strcmp(line, "done")){
 		op->op = op_stop;
 		return 0;
 	}
-	else if(!strcmp(token, "if")){
-		//TODO parse conditional statement
+	else if(!strncmp(line, "if ", 3)){
+		if(control_parse_conditional(op, line + 3)){
+			fprintf(stderr, "Failed to parse automation conditional\n");
+			return 1;
+		}
+		return 0;
 	}
 
-	fprintf(stderr, "Failed to parse automation line, previous segment %s\n", line);
+	fprintf(stderr, "Failed to parse automation line, current segment %s\n", line);
 	return 1;
 }
 

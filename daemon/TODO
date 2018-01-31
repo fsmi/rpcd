@@ -1,5 +1,6 @@
 Run automation on startup / after reset
 Default automation: load default layout
+Automation variable serialization file
 
 control
 	_run_automation

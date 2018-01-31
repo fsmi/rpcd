@@ -107,7 +107,9 @@ Automation variables occupy variable space distinct from user command variables.
 file. All spawned window processes receive the entire automation variable space in their environment. Variable arguments to `window`
 processes also refer to the automated variable space.
 
-Automation variable names may not start with a dash (*-*), double quote (*"*) or a number, to be able to distinguish them from constants.
+Automation variables are required to follow the naming conventions for environment variables, that is the can only
+consist of the ASCII characters A-z (upper- and lowercase), as well as the digits 0-9 and the underscore (*_*).
+Variable names may not start a number, to be able to distinguish them from constants and may not contain spaces.
 
 #### Automation input
 
@@ -231,9 +233,12 @@ The following features may be broken for such processes:
 
 * Loading a layout while the command is running may hide the window without terminating the command
 * Display automation may not run even though there is no window displayed, as the display is still considered busy until the command terminates
+* The window may not show up at all (with this not being recognized as a bug in `rpcd`)
 
 ## Caveats
 
+* Nesting conditionals in the automation configuration will pass the parser, but execution will
+not be straightforward and may produce unintended side effects due to the internal implementation.
 * Special characters and spaces in layout/command names currently cause problems. This may be fixed
 in the (near) future.
 * `string` arguments allow free-form user supplied data to be passed to spawned commands, presenting

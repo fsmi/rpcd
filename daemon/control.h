@@ -3,6 +3,9 @@
 #define CLIENT_RECV_CHUNK 2048
 #define CLIENT_RECV_LIMIT 8192
 
+#include "x11.h"
+#include "layout.h"
+
 typedef struct /*_automation_variable_t*/ {
 	char* name;
 	char* value;
@@ -26,9 +29,9 @@ typedef enum /*_automation_opcode_t*/ {
 	op_noop = 0,
 	//unary operations
 	op_layout_default, //requires display_id
-	op_layout, //requires display_id, operand_numeric = layout_id
+	op_layout, //requires display_id, operand_a = layout_name
 	op_skip, //requires operand_numeric = skip
-	op_condition_empty, //requires operand_a, resolve_a
+	op_condition_empty, //requires negate, operand_a, resolve_a
 	op_stop,
 	//binary operations
 	op_assign, //requires operand_a, display_id, operand_numeric = frame
@@ -42,6 +45,12 @@ typedef enum /*_automation_display_status_t*/ {
 	display_busy,
 	display_waiting
 } display_status_t;
+
+typedef struct /*_automation_display_configuration_t*/ {
+	display_status_t status;
+	display_t* display;
+	layout_t* layout;
+} display_config_t;
 
 typedef struct /*_automation_op_t*/ {
 	automation_opcode_t op;

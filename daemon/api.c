@@ -602,7 +602,9 @@ int api_ok(){
 
 void api_cleanup(){
 	size_t u;
-	close(listen_fd);
+	if(listen_fd >= 0){
+		close(listen_fd);
+	}
 	listen_fd = -1;
 
 	for(u = 0; u < nclients; u++){

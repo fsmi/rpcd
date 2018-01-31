@@ -256,7 +256,7 @@ rpcd_child_t* child_window_get(size_t index){
 rpcd_child_t* child_window_find(char* name){
 	size_t u;
 	for(u = 0; u < nwindows; u++){
-		if(!strcasecmp(name, windows[u].name)){
+		if(windows[u].name && !strcasecmp(name, windows[u].name)){
 			return windows + u;
 		}
 	}
