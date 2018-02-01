@@ -52,6 +52,12 @@ typedef struct /*_automation_display_configuration_t*/ {
 	layout_t* layout;
 } display_config_t;
 
+typedef struct /*_automation_assignment_t*/ {
+	size_t display_id;
+	size_t frame_id;
+	char* requested;
+} automation_assign_t;
+
 typedef struct /*_automation_op_t*/ {
 	automation_opcode_t op;
 	size_t display_id;

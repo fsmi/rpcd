@@ -23,6 +23,9 @@ static size_t noperations = 0;
 static automation_operation_t* operations = NULL;
 static display_config_t* display_status = NULL;
 
+static size_t nassign = 0;
+static automation_assign_t* assign = NULL;
+
 static ssize_t control_variable_find(char* name){
 	ssize_t u;
 
@@ -297,16 +300,20 @@ static size_t control_evaluate_condition(automation_operation_t* op){
 
 	switch(op->op){
 		case op_condition_greater:
-			rv = (strtoul(operand_a, NULL, 10) > strtoul(operand_b, NULL, 10)) ? 1 : 0;
+			rv = (strtol(operand_a, NULL, 10) > strtol(operand_b, NULL, 10)) ? 0 : 1;
+			//fprintf(stderr, "cond_greater: %s %s -> skip %zu\n", operand_a, operand_b, rv);
 			break;
 		case op_condition_less:
-			rv = (strtoul(operand_a, NULL, 10) < strtoul(operand_b, NULL, 10)) ? 1 : 0;
+			rv = (strtol(operand_a, NULL, 10) < strtol(operand_b, NULL, 10)) ? 0 : 1;
+			//fprintf(stderr, "cond_less: %s %s -> skip %zu\n", operand_a, operand_b, rv);
 			break;
 		case op_condition_equals:
-			rv = strcmp(op->operand_a, op->operand_b) ? 0 : 1;
+			rv = strcmp(operand_a, operand_b) ? 1 : 0;
+			//fprintf(stderr, "cond_equals: %s %s -> skip %zu\n", operand_a, operand_b, rv);
 			break;
 		case op_condition_empty:
-			rv = strlen(operand_a) ? 0 : 1;
+			rv = strlen(operand_a) ? 1 : 0;
+			//fprintf(stderr, "cond_empty: %s -> skip %zu\n", operand_a, rv);
 			break;
 		default:
 			fprintf(stderr, "Unhandled conditional operation, result undefined\n");
@@ -334,7 +341,7 @@ static automation_operation_t* control_new_operation(){
 }
 
 int control_run_automation(){
-	size_t u;
+	size_t u, p, active_assigns = 0;
 	automation_operation_t* op = NULL;
 
 	//early exit
@@ -371,7 +378,34 @@ int control_run_automation(){
 				display_status[op->display_id].layout = layout_find(op->display_id, op->operand_a);
 				break;
 			case op_assign:
-				//TODO
+				//if an assign for the frame was already registered, replace it
+				for(p = 0; p < active_assigns; p++){
+					//FIXME if we assign a window twice, the first assign becomes invalid
+					if(assign[p].display_id == op->display_id
+							&& assign[p].frame_id == op->operand_numeric){
+						assign[p].requested = op->operand_a;
+						break;
+					}
+				}
+				if(p != active_assigns){
+					break;
+				}
+
+				//reallocate if necessary
+				if(active_assigns <= nassign){
+					assign = realloc(assign, (nassign + 1) * sizeof(automation_assign_t));
+					if(!assign){
+						fprintf(stderr, "Failed to allocate memory\n");
+						nassign = 0;
+						return 1;
+					}
+					nassign++;
+				}
+
+				assign[active_assigns].display_id = op->display_id;
+				assign[active_assigns].frame_id = op->operand_numeric;
+				assign[active_assigns].requested = op->operand_a;
+				active_assigns++;
 				break;
 			case op_skip:
 				u += operations[u].operand_numeric;
@@ -391,6 +425,9 @@ int control_run_automation(){
 	fprintf(stderr, "Automation stopped by end of instruction list\n");
 
 apply_results:
+	for(u = 0; u < active_assigns; u++){
+		fprintf(stderr, "[%zu,%zu] => %s\n", assign[u].display_id, assign[u].frame_id, assign[u].requested);
+	}
 	//start requested windows
 	//if(display_status[operations[u].display_id].status != display_busy){
 		//TODO stop command if on different display
@@ -402,6 +439,7 @@ apply_results:
 	for(u = 0; u < x11_count(); u++){
 		if(display_status[u].status == display_ready
 				&& display_status[u].layout){
+			//TODO use damage tracking to apply the layout only if it changes
 			if(x11_activate_layout(display_status[u].layout)){
 				fprintf(stderr, "Automation failed to activate layout %s on display %zu, exiting\n", display_status[u].layout->name, u);
 				return 1;
@@ -409,6 +447,7 @@ apply_results:
 		}
 	}
 
+	fprintf(stderr, "Done\n\n");
 	return 0;
 }
 
@@ -705,4 +744,8 @@ void control_cleanup(){
 	operations = NULL;
 	noperations = 0;
 	free(display_status);
+
+	free(assign);
+	nassign = 0;
+	assign = NULL;
 }
