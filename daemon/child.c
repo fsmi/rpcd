@@ -35,6 +35,7 @@ int child_discard_restores(size_t display_id){
 int child_stop(rpcd_child_t* child){
 	//FIXME this should reset the stack maximum index
 	//TODO set the stack order to "do not use"
+
 	//this happens when trying to stop a repatriated child
 	if(!child->instance){
 		child->state = stopped;
@@ -100,6 +101,7 @@ int child_reap(){
 					//commands without windows don't lock the display
 					if(commands[u].mode == user){
 						x11_unlock(commands[u].display_id);
+						commands[u].frame_id = -1;
 					}
 					fprintf(stderr, "Instance of %s stopped\n", commands[u].name);
 					break;
@@ -219,12 +221,23 @@ static void child_window_proc(rpcd_child_t* child, command_instance_t* instance_
 int child_start(rpcd_child_t* child, size_t display_id, size_t frame_id, command_instance_t* instance_args){
 	display_t* display = NULL;
 
+	child->display_id = display_id;
+	child->frame_id = frame_id;
+
+	if(child->mode != user_no_windows){
+		display = x11_get(display_id);
+		x11_select_frame(display_id, frame_id);
+		//reset in _reap
+		if(child->restore_layout){
+			x11_fullscreen(display_id);
+		}
+	}
+
 	child->instance = fork();
 	switch(child->instance){
 		case 0:
 			//update the environment with proper DISPLAY
 			if(child->mode != user_no_windows){
-				display = x11_get(display_id);
 				if(setenv("DISPLAY", display->identifier, 1)){
 					fprintf(stderr, "Failed to update the environment: %s\n", strerror(errno));
 				}
@@ -611,7 +624,13 @@ int child_repatriate(size_t display_id, size_t frame_id, Window window){
 }
 
 int child_raise(rpcd_child_t* child, size_t display_id, size_t frame_id){
+	if(child->display_id != display_id){
+		fprintf(stderr, "Failed to raise window for child %s: mismatched display\n", child->name);
+		return 1;
+	}
+
 	//TODO re-set stack to be the topmost window
+	child->frame_id = frame_id;
 	return 0;
 }
 

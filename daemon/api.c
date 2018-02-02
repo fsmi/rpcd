@@ -194,7 +194,7 @@ static int api_parse_json(rpcd_child_t* command, command_instance_t* instance, e
 		int frame_id = -1;
 		err = ejson_get_int_from_key(ejson, "frame", false, false, &frame_id);
 		if (err == EJSON_OK){
-			x11_select_frame(command->display_id, frame_id);
+			command->frame_id = frame_id;
 		} else if (EJSON_KEY_NOT_FOUND) {
 			fprintf(stderr, "No frame provided for command, using active one\n");
 		} else {
@@ -209,7 +209,7 @@ static int api_parse_json(rpcd_child_t* command, command_instance_t* instance, e
 			fprintf(stderr, "Failed to parse fullscreen parameter\n");
 		}
 		else if(fullscreen){
-			x11_fullscreen(command->display_id);
+			//when this is set, child_start will fullscreen/restore the layout automatically
 			command->restore_layout = 1;
 		}
 	}
