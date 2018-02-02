@@ -503,7 +503,6 @@ apply_results:
 			//TODO use damage tracking to apply the layout only if it changes
 			if(x11_activate_layout(display_status[u].layout)){
 				fprintf(stderr, "Automation failed to activate layout %s on display %zu, exiting\n", display_status[u].layout->name, u);
-				free(instance_env.arguments);
 				rv = 1;
 				goto cleanup;
 			}
