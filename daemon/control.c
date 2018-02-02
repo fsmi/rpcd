@@ -341,7 +341,7 @@ static automation_operation_t* control_new_operation(){
 }
 
 int control_run_automation(){
-	size_t u, p, active_assigns = 0;
+	size_t u, p, active_assigns = 0, done;
 	automation_operation_t* op = NULL;
 
 	//early exit
@@ -378,16 +378,20 @@ int control_run_automation(){
 				display_status[op->display_id].layout = layout_find(op->display_id, op->operand_a);
 				break;
 			case op_assign:
+				done = 0;
 				//if an assign for the frame was already registered, replace it
 				for(p = 0; p < active_assigns; p++){
-					//FIXME if we assign a window twice, the first assign becomes invalid
+					//assigning a window twice invalidates the first assign
+					if(assign[p].requested && !strcmp(assign[p].requested, op->operand_a)){
+						assign[p].requested = NULL;
+					}
 					if(assign[p].display_id == op->display_id
 							&& assign[p].frame_id == op->operand_numeric){
 						assign[p].requested = op->operand_a;
-						break;
+						done = 1;
 					}
 				}
-				if(p != active_assigns){
+				if(done){
 					break;
 				}
 
