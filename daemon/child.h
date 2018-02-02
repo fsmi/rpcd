@@ -43,7 +43,7 @@ typedef struct /*_rpcd_child_t*/ {
 	size_t start_iteration;
 
 	/*x11 attributes*/
-	size_t order; /*activation stack order*/
+	ssize_t order; /*activation stack order*/
 	size_t display_id; /*active display*/
 	ssize_t frame_id; /*active frame*/
 	size_t nwindows; /*number of displayed windows*/
@@ -56,14 +56,13 @@ typedef struct /*_rpcd_child_t*/ {
 } rpcd_child_t;
 
 typedef struct /*_user_command_instance_cfg*/ {
-	size_t restore_layout;
+	size_t nargs;
 	char** arguments;
 } command_instance_t;
 
 int child_active(rpcd_child_t* child);
 int child_discard_restores(size_t display_id);
-int child_start_command(rpcd_child_t* child, char* posted_json, size_t data_length);
-int child_start_window(rpcd_child_t* child, size_t display_id, size_t frame_id);
+int child_start(rpcd_child_t* child, size_t display_id, size_t frame_id, command_instance_t* instance_args);
 int child_raise(rpcd_child_t* child, size_t display_id, size_t frame_id);
 int child_stop(rpcd_child_t* child);
 int child_stop_commands(size_t display_id);

@@ -344,11 +344,15 @@ static automation_operation_t* control_new_operation(){
 
 int control_run_automation(){
 	size_t u, p, active_assigns = 0, done;
+	int rv = 0;
 	automation_operation_t* op = NULL;
 	rpcd_child_t* window = NULL;
+	command_instance_t instance_env = {
+		0
+	};
 
 	//early exit
-	if(!noperations){
+	if(!noperations || !init_done){
 		return 0;
 	}
 
@@ -447,7 +451,27 @@ apply_results:
 		
 		//if stopped, start
 		if(window->state == stopped){
-			child_start_window(window, assign[u].display_id, assign[u].frame_id);
+			//build argument list if not done yet
+			if(!instance_env.arguments){
+				instance_env.nargs = nvars * 2;
+				instance_env.arguments = calloc(nvars * 2, sizeof(char*));
+				if(!instance_env.arguments){
+					fprintf(stderr, "Failed to allocate memory\n");
+					return 1;
+				}
+				for(p = 0; p < nvars; p++){
+					instance_env.arguments[p * 2] = strdup(vars[p].name);
+					instance_env.arguments[(p * 2) + 1] = strdup(vars[p].value);
+					if(!instance_env.arguments[p * 2]
+							|| !instance_env.arguments[(p * 2) + 1]){
+						fprintf(stderr, "Failed to allocate memory\n");
+						rv = 1;
+						goto cleanup;
+					}
+				}
+			}
+
+			child_start(window, assign[u].display_id, assign[u].frame_id, &instance_env);
 			//wait for window
 			display_status[assign[u].display_id].status = display_waiting;
 			continue;
@@ -479,13 +503,20 @@ apply_results:
 			//TODO use damage tracking to apply the layout only if it changes
 			if(x11_activate_layout(display_status[u].layout)){
 				fprintf(stderr, "Automation failed to activate layout %s on display %zu, exiting\n", display_status[u].layout->name, u);
-				return 1;
+				free(instance_env.arguments);
+				rv = 1;
+				goto cleanup;
 			}
 			fprintf(stderr, "Automation complete on display %zu\n", u);
 		}
 	}
 
-	return 0;
+cleanup:
+	for(u = 0; u < instance_env.nargs; u++){
+		free(instance_env.arguments[u]);
+	}
+	free(instance_env.arguments);
+	return rv;
 }
 
 static int control_parse_layout(automation_operation_t* op, char* spec){
@@ -720,10 +751,11 @@ int control_loop(fd_set* in, fd_set* out, int* max_fd){
 	size_t u;
 
 	if(!init_done){
+		//checked in _run_automation
+		init_done = 1;
 		if(control_run_automation()){
 			return 1;
 		}
-		init_done = 1;
 	}
 
 	for(u = 0; u < nfds; u++){

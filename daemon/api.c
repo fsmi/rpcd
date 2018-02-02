@@ -10,6 +10,7 @@
 #include <netdb.h>
 #include <errno.h>
 #include <fcntl.h>
+#include "../libs/easy_json.h"
 
 #include "x11.h"
 #include "child.h"
@@ -156,6 +157,127 @@ static int api_accept(){
 
 	clients[u].fd = fd;
 	return 0;
+}
+
+static int api_verify_enum(argument_t* arg, char* value){
+	char** item = NULL;
+	for(item = arg->additional; *item; item++){
+		if(!strcasecmp(*item, value)){
+			//fix up case of submitted value
+			memcpy(value, *item, strlen(*item));
+			return 0;
+		}
+	}
+	return 1;
+}
+
+static int api_parse_json(rpcd_child_t* command, command_instance_t* instance, ejson_object* ejson) {
+	//FIXME merge this into _start_command
+	ejson_object* args = &ejson_find_by_key(ejson, "arguments", false, false)->object;
+	size_t u;
+	argument_t* cmd_arg;
+	int err;
+
+	if(command->mode == user){
+		char* display_name = NULL;
+		err = ejson_get_string_from_key(ejson, "display", false, false, &display_name);
+		if (err == EJSON_KEY_NOT_FOUND) {
+			fprintf(stderr, "No display provided for command, using default display\n");
+			command->display_id = 0;
+		} else if (err == EJSON_OK) {
+			command->display_id = x11_find_id(display_name);
+		} else {
+			fprintf(stderr, "Failed to parse display parameter\n");
+			return 1;
+		}
+
+		int frame_id = -1;
+		err = ejson_get_int_from_key(ejson, "frame", false, false, &frame_id);
+		if (err == EJSON_OK){
+			x11_select_frame(command->display_id, frame_id);
+		} else if (EJSON_KEY_NOT_FOUND) {
+			fprintf(stderr, "No frame provided for command, using active one\n");
+		} else {
+			fprintf(stderr, "Failed to parse frame parameter\n");
+		}
+
+		int fullscreen = 0;
+		err = ejson_get_int_from_key(ejson, "fullscreen", false, false, &fullscreen);
+		if (err == EJSON_KEY_NOT_FOUND) {
+			fprintf(stderr, "No fullscreen parameter provided, using off\n");
+		} else if (err != EJSON_OK) {
+			fprintf(stderr, "Failed to parse fullscreen parameter\n");
+		}
+		else if(fullscreen){
+			x11_fullscreen(command->display_id);
+			command->restore_layout = 1;
+		}
+	}
+
+	if(command->nargs){
+		if(!args){
+			fprintf(stderr, "No arguments supplied\n");
+			return 1;
+		}
+
+		if (args->type != EJSON_OBJECT) {
+			fprintf(stderr, "Arguments is not an object.\n");
+			return 1;
+		}
+		for (u = 0; u < command->nargs; u++) {
+			cmd_arg = command->args + u;
+			err = ejson_get_string_from_key(args, cmd_arg->name, true, false, &instance->arguments[u]);
+			if (err == EJSON_KEY_NOT_FOUND) {
+				continue;
+			} else if (err != EJSON_OK) {
+				fprintf(stderr, "Failed to fetch assigned value for argument %s\n", cmd_arg->name);
+				return 1;
+			}
+
+			if(cmd_arg->type == arg_enum && api_verify_enum(cmd_arg, instance->arguments[u])) {
+				fprintf(stderr, "Value of %s is not a valid for enum type\n", cmd_arg->name);
+				return 1;
+			}
+		}
+	}
+
+	return 0;
+}
+
+static int api_start_command(rpcd_child_t* command, char* data, size_t data_len){
+	int rv = 1;
+	size_t u;
+	ejson_base* ejson = NULL;
+	command_instance_t instance = {
+		.nargs = command->nargs,
+		.arguments = calloc(command->nargs, sizeof(char*))
+	};
+
+	if(!instance.arguments){
+		fprintf(stderr, "Failed to allocate memory\n");
+		return 1;
+	}
+
+	if(data_len < 1) {
+		fprintf(stderr, "No execution information provided for command %s\n", command->name);
+		free(instance.arguments);
+		return 1;
+	}
+
+	enum ejson_errors error = ejson_parse_warnings(data, data_len, true, stderr, &ejson);
+	if (error == EJSON_OK && ejson->type == EJSON_OBJECT){
+		if(!api_parse_json(command, &instance, &ejson->object)){
+			//debug variable set
+			for(u = 0; u < command->nargs; u++){
+				fprintf(stderr, "%s.%s -> %s\n", command->name, command->args[u].name, instance.arguments[u] ? instance.arguments[u] : "-null-");
+			}
+			rv = child_start(command, command->display_id, command->frame_id, &instance);
+		}
+	}
+
+	free(instance.arguments);
+	ejson_cleanup(ejson);
+	return rv;
 }
 
 static int api_send_header(http_client_t* client, char* code, bool json){
@@ -460,7 +582,7 @@ static int api_handle_body(http_client_t* client){
 		else if(child_active(command)){
 			rv = api_send_header(client, "500 Already running", false);
 		}
-		else if(child_start_command(command, client->recv_buf, client->payload_size)){
+		else if(api_start_command(command, client->recv_buf, client->payload_size)){
 			rv = api_send_header(client, "500 Failed to start", false);
 		}
 		else{

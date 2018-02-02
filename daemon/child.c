@@ -10,7 +10,7 @@
 
 #include "x11.h"
 #include "child.h"
-#include "../libs/easy_json.h"
+#include "control.h"
 
 static size_t ncommands = 0;
 static rpcd_child_t* commands = NULL;
@@ -176,19 +176,55 @@ static void child_command_proc(rpcd_child_t* child, command_instance_t* args){
 
 	//exec into command
 	if(execvp(argv[0], argv)){
-		fprintf(stderr, "Failed to execute child process (%s): %s\n", argv[0], strerror(errno));
+		fprintf(stderr, "Failed to execute child command process (%s): %s\n", argv[0], strerror(errno));
 		exit(EXIT_FAILURE);
 	}
 }
 
-static int child_spawn(rpcd_child_t* child, command_instance_t* args){
+static void child_window_proc(rpcd_child_t* child, command_instance_t* instance_info){
+	size_t u, nargs = 1;
+	char** argv = calloc(2, sizeof(char*));
+	char* token = NULL;
+	if(!argv){
+		fprintf(stderr, "Failed to allocate memory\n");
+		exit(EXIT_FAILURE);
+	}
+
+	//update the environment with all variables
+	for(u = 0; u < instance_info->nargs / 2; u++){
+		if(setenv(instance_info->arguments[u * 2], instance_info->arguments[(u * 2) + 1], 1)){
+			fprintf(stderr, "Failed to update the environment: %s\n", strerror(errno));
+		}
+	}
+
+	argv[0] = strtok(child->command, " ");
+	for(token = strtok(NULL, " "); token; token = strtok(NULL, " ")){
+		argv = realloc(argv, (nargs + 2) * sizeof(char*));
+		if(!argv){
+			fprintf(stderr, "Failed to allocate memory\n");
+			exit(EXIT_FAILURE);
+		}
+
+		argv[nargs + 1] = NULL;
+		argv[nargs] = token;
+	}
+
+	//exec into window executable
+	if(execvp(argv[0], argv)){
+		fprintf(stderr, "Failed to execute child window process (%s): %s\n", argv[0], strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+}
+
+int child_start(rpcd_child_t* child, size_t display_id, size_t frame_id, command_instance_t* instance_args){
 	display_t* display = NULL;
+
 	child->instance = fork();
 	switch(child->instance){
 		case 0:
 			//update the environment with proper DISPLAY
 			if(child->mode != user_no_windows){
-				display = x11_get(child->display_id);
+				display = x11_get(display_id);
 				if(setenv("DISPLAY", display->identifier, 1)){
 					fprintf(stderr, "Failed to update the environment: %s\n", strerror(errno));
 				}
@@ -205,8 +241,15 @@ static int child_spawn(rpcd_child_t* child, command_instance_t* args){
 							child->working_directory, child->name, strerror(errno));
 				}
 			}
-			//FIXME might want to differentiate between child types here
-			child_command_proc(child, args);
+
+			//handle with appropriate child procedure
+			if(child->mode == user || child->mode == user_no_windows){
+				child_command_proc(child, instance_args);
+			}
+			else{
+				child_window_proc(child, instance_args);
+			}
+			//if for some reason it comes to this, terminate the child
 			exit(EXIT_FAILURE);
 		case -1:
 			fprintf(stderr, "Failed to spawn child process for command %s: %s\n", child->name, strerror(errno));
@@ -216,7 +259,6 @@ static int child_spawn(rpcd_child_t* child, command_instance_t* args){
 				x11_lock(child->display_id);
 			}
 			child->state = running;
-			child->restore_layout = args->restore_layout;
 	}
 	return 0;
 }
@@ -261,131 +303,6 @@ rpcd_child_t* child_window_find(char* name){
 		}
 	}
 	return NULL;
-}
-
-static int child_verify_enum(argument_t* arg, char* value){
-	char** item = NULL;
-	for(item = arg->additional; *item; item++){
-		if(!strcasecmp(*item, value)){
-			//fix up case of submitted value
-			memcpy(value, *item, strlen(*item));
-			return 0;
-		}
-	}
-	return 1;
-}
-
-static int child_parse_json(rpcd_child_t* command, command_instance_t* instance, ejson_object* ejson) {
-	ejson_object* args = &ejson_find_by_key(ejson, "arguments", false, false)->object;
-	size_t u;
-	argument_t* cmd_arg;
-	int err;
-
-	if(command->mode == user){
-		char* display_name = NULL;
-		err = ejson_get_string_from_key(ejson, "display", false, false, &display_name);
-		if (err == EJSON_KEY_NOT_FOUND) {
-			fprintf(stderr, "No display provided for command, using default display\n");
-			command->display_id = 0;
-		} else if (err == EJSON_OK) {
-			command->display_id = x11_find_id(display_name);
-		} else {
-			fprintf(stderr, "Failed to parse display parameter\n");
-			return 1;
-		}
-
-		int frame_id = -1;
-		err = ejson_get_int_from_key(ejson, "frame", false, false, &frame_id);
-		if (err == EJSON_OK){
-			x11_select_frame(command->display_id, frame_id);
-		} else if (EJSON_KEY_NOT_FOUND) {
-			fprintf(stderr, "No frame provided for command, using active one\n");
-		} else {
-			fprintf(stderr, "Failed to parse frame parameter\n");
-		}
-
-		int fullscreen = 0;
-		err = ejson_get_int_from_key(ejson, "fullscreen", false, false, &fullscreen);
-		if (err == EJSON_KEY_NOT_FOUND) {
-			fprintf(stderr, "No fullscreen parameter provided, using off\n");
-		} else if (err != EJSON_OK) {
-			fprintf(stderr, "Failed to parse fullscreen parameter\n");
-		}
-		else if(fullscreen){
-			x11_fullscreen(command->display_id);
-			instance->restore_layout = 1;
-		}
-	}
-
-	if(command->nargs){
-		if(!args){
-			fprintf(stderr, "No arguments supplied\n");
-			return 1;
-		}
-
-		if (args->type != EJSON_OBJECT) {
-			fprintf(stderr, "Arguments is not an object.\n");
-			return 1;
-		}
-		for (u = 0; u < command->nargs; u++) {
-			cmd_arg = command->args + u;
-			err = ejson_get_string_from_key(args, cmd_arg->name, true, false, &instance->arguments[u]);
-			if (err == EJSON_KEY_NOT_FOUND) {
-				continue;
-			} else if (err != EJSON_OK) {
-				fprintf(stderr, "Failed to fetch assigned value for argument %s\n", cmd_arg->name);
-				return 1;
-			}
-
-			if(cmd_arg->type == arg_enum && child_verify_enum(cmd_arg, instance->arguments[u])) {
-				fprintf(stderr, "Value of %s is not a valid for enum type\n", cmd_arg->name);
-				return 1;
-			}
-		}
-	}
-
-	return 0;
-}
-
-int child_start_command(rpcd_child_t* command, char* data, size_t data_len){
-	int rv = 1;
-	ejson_base* ejson = NULL;
-	size_t u;
-	command_instance_t instance = {
-		.arguments = calloc(command->nargs, sizeof(char*))
-	};
-
-	if(!instance.arguments){
-		fprintf(stderr, "Failed to allocate memory\n");
-		return 1;
-	}
-
-	if(data_len < 1) {
-		fprintf(stderr, "No execution information provided for command %s\n", command->name);
-		free(instance.arguments);
-		return 1;
-	}
-
-	enum ejson_errors error = ejson_parse_warnings(data, data_len, true, stderr, &ejson);
-	if (error == EJSON_OK && ejson->type == EJSON_OBJECT){
-		if(!child_parse_json(command, &instance, &ejson->object)){
-			//debug variable set
-			for(u = 0; u < command->nargs; u++){
-				fprintf(stderr, "%s.%s -> %s\n", command->name, command->args[u].name, instance.arguments[u] ? instance.arguments[u] : "-null-");
-			}
-			rv = child_spawn(command, &instance);
-		}
-	}
-
-	free(instance.arguments);
-	ejson_cleanup(ejson);
-	return rv;
-}
-
-int child_start_window(rpcd_child_t* window, size_t display_id, size_t frame_id){
-	//TODO spawn window with correct environment
-	fprintf(stderr, "Starting automation window %s\n", window->name);
-	return 0;
 }
 
 static void child_init(rpcd_child_t* child){
@@ -574,6 +491,11 @@ int child_match_window(size_t display_id, Window window, pid_t pid, char* title,
 		fprintf(stderr, "Matched window %zu (%d, %s, %s, %s) on display %zu to child %zu (%s) using strategy %u, now at %zu windows\n",
 				window, pid, title ? title : "-none-", name ? name : "-none-",
 				class ? class : "-none-", display_id, u, match->name, strategy, match->nwindows);
+
+		//run automation if an automated window was mapped
+		if(match->mode != user && match->mode != user_no_windows){
+			return control_run_automation();
+		}
 		return 0;
 	}
 
@@ -882,14 +804,14 @@ int child_ok(){
 			fprintf(stderr, "Command %s missing command definition\n", last->name);
 			return 1;
 		}
-	
+
 		for(u = 0; u < last->nargs; u++){
 			if(!last->args[u].name){
 				fprintf(stderr, "User argument to command %s has no name\n", last->name);
 				return 1;
 			}
 
-			if(last->args[u].type == arg_enum 
+			if(last->args[u].type == arg_enum
 					&& !(last->args[u].additional && last->args[u].additional[0])){
 				fprintf(stderr, "Enum arguments to command %s require at least one option\n", last->name);
 				return 1;
