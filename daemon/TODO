@@ -16,6 +16,7 @@ Set command order property on start/stop
 Window startup iteration counter
 Split child functionality into 2 modules
 Restart window on variable change?
+Start keepalive windows
 
 Assign user commands a higher stack order than windows => No, only automate when not busy
 Should layout loading mark the display busy => No

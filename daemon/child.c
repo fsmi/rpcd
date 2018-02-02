@@ -347,7 +347,7 @@ static int child_parse_json(rpcd_child_t* command, command_instance_t* instance,
 	return 0;
 }
 
-int child_run_command(rpcd_child_t* command, char* data, size_t data_len){
+int child_start_command(rpcd_child_t* command, char* data, size_t data_len){
 	int rv = 1;
 	ejson_base* ejson = NULL;
 	size_t u;
@@ -380,6 +380,12 @@ int child_run_command(rpcd_child_t* command, char* data, size_t data_len){
 	free(instance.arguments);
 	ejson_cleanup(ejson);
 	return rv;
+}
+
+int child_start_window(rpcd_child_t* window, size_t display_id, size_t frame_id){
+	//TODO spawn window with correct environment
+	fprintf(stderr, "Starting automation window %s\n", window->name);
+	return 0;
 }
 
 static void child_init(rpcd_child_t* child){
@@ -679,6 +685,11 @@ int child_repatriate(size_t display_id, size_t frame_id, Window window){
 	rep->display_id = display_id;
 	rep->frame_id = frame_id;
 	rep->state = running;
+	return 0;
+}
+
+int child_raise(rpcd_child_t* child, size_t display_id, size_t frame_id){
+	//TODO re-set stack to be the topmost window
 	return 0;
 }
 

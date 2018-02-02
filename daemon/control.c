@@ -13,6 +13,8 @@
 
 #include "child.h"
 
+static size_t init_done = 0;
+
 static size_t nvars = 0;
 static variable_t* vars = NULL;
 
@@ -343,6 +345,7 @@ static automation_operation_t* control_new_operation(){
 int control_run_automation(){
 	size_t u, p, active_assigns = 0, done;
 	automation_operation_t* op = NULL;
+	rpcd_child_t* window = NULL;
 
 	//early exit
 	if(!noperations){
@@ -421,24 +424,54 @@ int control_run_automation(){
 				u += control_evaluate_condition(operations + u);
 				break;
 			case op_stop:
-				fprintf(stderr, "Automation stopped by operation\n");
+				fprintf(stderr, "Automation script execution stopped by operation\n");
 				goto apply_results;
 		}
 	}
 
-	fprintf(stderr, "Automation stopped by end of instruction list\n");
+	fprintf(stderr, "Automation script execution stopped by end of instruction list\n");
 
 apply_results:
-	for(u = 0; u < active_assigns; u++){
-		fprintf(stderr, "[%zu,%zu] => %s\n", assign[u].display_id, assign[u].frame_id, assign[u].requested);
-	}
 	//start requested windows
-	//if(display_status[operations[u].display_id].status != display_busy){
-		//TODO stop command if on different display
-		//TODO start command if not started
+	for(u = 0; u < active_assigns; u++){
+		if(!assign[u].requested){
+			continue;
+		}
+
+		//do not start on busy display
+		if(display_status[assign[u].display_id].status == display_busy){
+			continue;
+		}
+
+		window = child_window_find(assign[u].requested);
+		
+		//if stopped, start
+		if(window->state == stopped){
+			child_start_window(window, assign[u].display_id, assign[u].frame_id);
+			//wait for window
+			display_status[assign[u].display_id].status = display_waiting;
+			continue;
+		}
+
+		//if running on different display, terminate
+		if(window->display_id != assign[u].display_id){
+			child_stop(window);
+			//wait for termination
+			display_status[assign[u].display_id].status = display_waiting;
+			continue;
+		}
+
+		if(!window->nwindows){
+			//still waiting for windows to be mapped
+			display_status[assign[u].display_id].status = display_waiting;
+			continue;
+		}
+
 		//TODO if replacing ondemand window, kill old occupant
-		//if window not ready, set display not ready
-	//}
+		child_raise(window, assign[u].display_id, assign[u].frame_id);
+		fprintf(stderr, "Automation succeeded on window %s\n", window->name);
+	}
+
 	//apply requested layouts
 	for(u = 0; u < x11_count(); u++){
 		if(display_status[u].status == display_ready
@@ -448,10 +481,10 @@ apply_results:
 				fprintf(stderr, "Automation failed to activate layout %s on display %zu, exiting\n", display_status[u].layout->name, u);
 				return 1;
 			}
+			fprintf(stderr, "Automation complete on display %zu\n", u);
 		}
 	}
 
-	fprintf(stderr, "Done\n\n");
 	return 0;
 }
 
@@ -679,12 +712,19 @@ int control_config_automation(char* line){
 		return 0;
 	}
 
-	fprintf(stderr, "Failed to parse automation line, current segment %s\n", line);
+	fprintf(stderr, "Failed to parse automation line: %s\n", line);
 	return 1;
 }
 
 int control_loop(fd_set* in, fd_set* out, int* max_fd){
 	size_t u;
+
+	if(!init_done){
+		if(control_run_automation()){
+			return 1;
+		}
+		init_done = 1;
+	}
 
 	for(u = 0; u < nfds; u++){
 		if(fds[u].fd >= 0 && FD_ISSET(fds[u].fd, in)){
@@ -721,6 +761,7 @@ int control_ok(){
 
 void control_cleanup(){
 	size_t u;
+	init_done = 0;
 
 	for(u = 0; u < nvars; u++){
 		free(vars[u].name);
@@ -748,6 +789,7 @@ void control_cleanup(){
 	operations = NULL;
 	noperations = 0;
 	free(display_status);
+	display_status = NULL;
 
 	free(assign);
 	nassign = 0;

@@ -460,7 +460,7 @@ static int api_handle_body(http_client_t* client){
 		else if(child_active(command)){
 			rv = api_send_header(client, "500 Already running", false);
 		}
-		else if(child_run_command(command, client->recv_buf, client->payload_size)){
+		else if(child_start_command(command, client->recv_buf, client->payload_size)){
 			rv = api_send_header(client, "500 Failed to start", false);
 		}
 		else{

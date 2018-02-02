@@ -112,11 +112,12 @@ int main(int argc, char** argv){
 			goto bail;
 		}
 
-		if(control_loop(&primary, &secondary, &max_fd)){
+		if(x11_loop(&primary, &secondary, &max_fd)){
 			goto bail;
 		}
 
-		if(x11_loop(&primary, &secondary, &max_fd)){
+		//control loop after x11 loop due to initialization requirements within x11
+		if(control_loop(&primary, &secondary, &max_fd)){
 			goto bail;
 		}
 
