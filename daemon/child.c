@@ -102,6 +102,10 @@ int child_reap(){
 					if(commands[u].mode == user){
 						x11_unlock(commands[u].display_id);
 						commands[u].frame_id = -1;
+						//run automation as the display could have become unblocked
+						if(control_run_automation()){
+							return 1;
+						}
 					}
 					fprintf(stderr, "Instance of %s stopped\n", commands[u].name);
 					break;

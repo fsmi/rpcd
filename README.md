@@ -211,6 +211,7 @@ command) has the following consequences:
 * The command will not have a `DISPLAY` variable in its environment
 * The `frame`, `display` and `fullscreen` parameters are ignored
 	* This implies that there will be no interaction with `ratpoison` at all for the command
+* The command will not block the execution of any automation script
 
 ### Default display
 

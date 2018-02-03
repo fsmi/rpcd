@@ -459,6 +459,7 @@ int x11_loop(fd_set* in, fd_set* out, int* max_fd){
 					fprintf(stderr, "Failed to find default layout %s for %s\n", displays[u].default_layout_name, displays[u].name);
 					return 1;
 				}
+				x11_default_layout(u);
 			}
 		}
 		init_done = 1;

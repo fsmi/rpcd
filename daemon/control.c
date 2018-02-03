@@ -155,6 +155,11 @@ static int control_command(char* command){
 		return 0;
 	}
 
+	if(!strcmp(vars[var].value, sep)){
+		fprintf(stderr, "Variable %s unchanged\n", command);
+		return 0;
+	}
+
 	free(vars[var].value);
 	vars[var].value = strdup(sep);
 	if(!vars[var].value){
