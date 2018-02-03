@@ -20,6 +20,7 @@ static volatile sig_atomic_t reload_requested = 3;
 static void signal_handler(int signum){
 	switch(signum){
 		case SIGINT:
+		case SIGTERM:
 			shutdown_requested = 1;
 			break;
 		case SIGHUP:
@@ -97,6 +98,7 @@ int main(int argc, char** argv){
 	}
 
 	signal(SIGINT, signal_handler);
+	signal(SIGTERM, signal_handler);
 	signal(SIGCHLD, signal_handler);
 	signal(SIGHUP, signal_handler);
 	signal(SIGPIPE, SIG_IGN);
