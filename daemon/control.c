@@ -476,6 +476,7 @@ apply_results:
 				}
 			}
 
+			fprintf(stderr, "Automation starting window %s\n", window->name);
 			child_start(window, assign[u].display_id, assign[u].frame_id, &instance_env);
 			//wait for window
 			display_status[assign[u].display_id].status = display_waiting;
@@ -498,7 +499,6 @@ apply_results:
 
 		//TODO if replacing ondemand window, kill old occupant
 		child_raise(window, assign[u].display_id, assign[u].frame_id);
-		fprintf(stderr, "Automation succeeded on window %s\n", window->name);
 	}
 
 	//apply requested layouts

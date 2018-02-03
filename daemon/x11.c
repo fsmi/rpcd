@@ -93,8 +93,10 @@ static int x11_handle_window(display_t* display, Window w){
 static int x11_handle_event(display_t* display, XEvent* ev){
 	size_t u;
 	switch(ev->type){
-		case MapNotify:
-			//on first map: gather matching info and pass to command module
+		case ConfigureNotify:
+			//on first configure: gather matching info and pass to command module
+			//using configure instead of map as there is a race condition between telling
+			//ratpoison to map a window to a frame and that window actually becoming exposed
 			for(u = 0; u < nwindows; u++){
 				if(windows[u].window == ev->xmap.window && windows[u].state == unconfigured){
 					windows[u].state = active;
