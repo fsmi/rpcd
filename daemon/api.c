@@ -15,6 +15,7 @@
 #include "x11.h"
 #include "child.h"
 #include "api.h"
+#include "control.h"
 
 static int listen_fd = -1;
 static size_t nclients = 0;
@@ -482,7 +483,7 @@ static int api_send_status(http_client_t* client){
 		layout = x11_current_layout(u);
 
 		snprintf(send_buf, sizeof(send_buf), "%s{\"display\":\"%s\",\"layout\":\"%s\"}",
-				u ? "," : "", display->name, layout->name);
+				u ? "," : "", display->name, layout ? layout->name : "");
 		rv |= network_send(client->fd, send_buf);
 	}
 
@@ -511,6 +512,9 @@ static int api_handle_reset(){
 			| child_stop_commands(u)
 			| x11_default_layout(u);
 	}
+	//automation will be run iff at least one command was stopped, otherwise
+	//we need to trigger it manually
+	control_run_automation();
 	return rv;
 }
 

@@ -19,7 +19,7 @@ static rpcd_child_t* windows = NULL;
 static size_t last_command = 0;
 
 int child_active(rpcd_child_t* child){
-	return child->state == running;
+	return child->state != stopped;
 }
 
 int child_discard_restores(size_t display_id){
@@ -102,10 +102,6 @@ int child_reap(){
 					if(commands[u].mode == user){
 						x11_unlock(commands[u].display_id);
 						commands[u].frame_id = -1;
-						//run automation as the display could have become unblocked
-						if(control_run_automation()){
-							return 1;
-						}
 					}
 					fprintf(stderr, "Instance of %s stopped\n", commands[u].name);
 					break;
@@ -118,6 +114,11 @@ int child_reap(){
 					fprintf(stderr, "Automated window %s terminated\n", windows[u].name);
 					break;
 				}
+			}
+
+			//run automation as either a display may have become unlocked or a window may have died
+			if(control_run_automation()){
+				return 1;
 			}
 		}
 	}

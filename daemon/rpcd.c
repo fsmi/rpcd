@@ -131,6 +131,7 @@ int main(int argc, char** argv){
 					fprintf(stderr, "Exiting cleanly\n");
 					break;
 				}
+				//FD_ZERO(&secondary);
 			}
 			else{
 				fprintf(stderr, "select() failed: %s\n", strerror(errno));
@@ -143,18 +144,26 @@ int main(int argc, char** argv){
 				goto bail;
 			}
 			pid_signaled = 0;
-			//FIXME somehow, after this section, the listening fd is set in secondary
+			//FIXME somehow, after returning from a signal handler,
+			//some additional fds are set in secondary
 			//this causes the process to block on accept
 			//resetting the active fd set works around this
 			FD_ZERO(&secondary);
 		}
 
 		if(reload_requested){
+			if(reload_requested != 2){
+				//when returning from a signal handler
+				//flush old module fds
+				FD_ZERO(&secondary);
+			}
 			if(reload(argv[1])){
 				cleanup_all();
 			}
-			//flush old module fds
-			FD_ZERO(&secondary);
+			if(!reload_requested){
+				//discard old fd set after reload
+				FD_ZERO(&secondary);
+			}
 		}
 		//swap descriptor sets
 		primary = secondary;

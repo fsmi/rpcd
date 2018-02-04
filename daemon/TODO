@@ -1,15 +1,10 @@
-Run automation on startup / after reset
-Default automation: load default layout
 Automation variable serialization file
-
-control
-	_run_automation
 Somehow, invalid FDs are passed into API handling
+Fix SIGRETURN problem
 
 Documentation
 control implementation
-Distinct variable space: commands vs windows
-Pass window variables in env
+Window variable replacement
 Window filter configuration
 Reorder non-exported procedures
 Set command order property on start/stop
@@ -20,5 +15,4 @@ Start keepalive windows
 
 Assign user commands a higher stack order than windows => No, only automate when not busy
 Should layout loading mark the display busy => No
-Reset should trigger automation (otherwise, when no commands are started, automation is not called automatically)
 Reset should kill windows, too => Debatable
