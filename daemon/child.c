@@ -33,14 +33,14 @@ int child_discard_restores(size_t display_id){
 }
 
 int child_stop(rpcd_child_t* child){
-	//FIXME this should reset the stack maximum index
-	//TODO set the stack order to "do not use"
-
 	//this happens when trying to stop a repatriated child
 	if(!child->instance){
 		child->state = stopped;
 		return 0;
 	}
+
+	//mark all windows as "do not use"
+	child->order = -1;
 
 	switch(child->state){
 		case running:
@@ -223,9 +223,40 @@ static void child_window_proc(rpcd_child_t* child, command_instance_t* instance_
 	}
 }
 
+static size_t child_restack(){
+	size_t u, stack_min = -1, stack_max = 0;
+	rpcd_child_t* child = 0;
+
+	for(u = 0; u < ncommands + nwindows; u++){
+		child = (u < ncommands) ? commands + u : windows + (u - ncommands);
+		if(child->order > 0){
+			stack_min = (child->order < stack_min || stack_min < 0) ? child->order : stack_min;
+			stack_max = (child->order > stack_max) ? child->order : stack_max;
+		}
+	}
+
+	//shift all indices to the bottom
+	if(stack_min > 1){
+		stack_min--;
+		stack_max -= stack_min;
+
+		for(u = 0; u < ncommands + nwindows; u++){
+			child = (u < ncommands) ? commands + u : windows + (u - ncommands);
+			if(child->order > stack_min){
+				fprintf(stderr, "Restacking order %zu to %zu, minimum %zu maximum %zu\n",
+						child->order, child->order - stack_min, stack_min, stack_max);
+				child->order -= stack_min;
+			}
+		}
+	}
+
+	return stack_max + 1;
+}
+
 int child_start(rpcd_child_t* child, size_t display_id, size_t frame_id, command_instance_t* instance_args){
 	display_t* display = NULL;
 
+	child->order = child_restack();
 	child->display_id = display_id;
 	child->frame_id = frame_id;
 
@@ -634,8 +665,9 @@ int child_raise(rpcd_child_t* child, size_t display_id, size_t frame_id){
 		return 1;
 	}
 
-	//TODO re-set stack to be the topmost window
+	//update the frame and reorder the window to the top of the stack
 	child->frame_id = frame_id;
+	child->order = child_restack();
 	return 0;
 }
 
