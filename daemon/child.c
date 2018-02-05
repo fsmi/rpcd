@@ -41,6 +41,8 @@ int child_stop(rpcd_child_t* child){
 
 	//mark all windows as "do not use"
 	child->order = -1;
+	//reset the startup iteration counter so we can track startup tries again
+	child->start_iteration = 0;
 
 	switch(child->state){
 		case running:
@@ -259,6 +261,7 @@ int child_start(rpcd_child_t* child, size_t display_id, size_t frame_id, command
 	child->order = child_restack();
 	child->display_id = display_id;
 	child->frame_id = frame_id;
+	child->start_iteration++;
 
 	if(child->mode != user_no_windows){
 		display = x11_get(display_id);

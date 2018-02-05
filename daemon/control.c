@@ -46,7 +46,7 @@ static int control_input(input_type_t type, int fd){
 		.type = type,
 		.fd = fd
 	};
-	
+
 	for(u = 0; u < nfds; u++){
 		if(fds[u].fd < 0){
 			break;
@@ -453,9 +453,13 @@ apply_results:
 		}
 
 		window = child_window_find(assign[u].requested);
-		
+
 		//if stopped, start
 		if(window->state == stopped){
+			if(window->start_iteration >= WINDOW_START_RETRIES){
+				fprintf(stderr, "Automation failed to start window %s in %zu tries, ignoring\n", window->name, window->start_iteration);
+				continue;
+			}
 			//build argument list if not done yet
 			if(!instance_env.arguments){
 				instance_env.nargs = nvars * 2;
@@ -476,7 +480,7 @@ apply_results:
 				}
 			}
 
-			fprintf(stderr, "Automation starting window %s\n", window->name);
+			fprintf(stderr, "Automation starting window %s, iteration %zu\n", window->name, window->start_iteration);
 			child_start(window, assign[u].display_id, assign[u].frame_id, &instance_env);
 			//wait for window
 			display_status[assign[u].display_id].status = display_waiting;
@@ -599,7 +603,7 @@ static char* control_parse_operand(char* spec, size_t* resolve, char** operand){
 			fprintf(stderr, "Unterminated quoted string in conditional expression\n");
 			return NULL;
 		}
-		
+
 		spec[end] = ' ';
 	}
 	else{

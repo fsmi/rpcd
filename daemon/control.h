@@ -2,6 +2,7 @@
 #define LISTEN_QUEUE_LENGTH 128
 #define CLIENT_RECV_CHUNK 2048
 #define CLIENT_RECV_LIMIT 8192
+#define WINDOW_START_RETRIES 4
 
 #include "x11.h"
 #include "layout.h"

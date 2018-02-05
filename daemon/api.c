@@ -479,7 +479,6 @@ static int api_send_status(http_client_t* client){
 	n = x11_count();
 	for(u = 0; u < n; u++){
 		display = x11_get(u);
-		//FIXME this might return NULL
 		layout = x11_current_layout(u);
 
 		snprintf(send_buf, sizeof(send_buf), "%s{\"display\":\"%s\",\"layout\":\"%s\"}",
@@ -507,14 +506,13 @@ static int api_handle_reset(){
 	size_t u = 0;
 	int rv = 0;
 	for(u = 0; u < x11_count(); u++){
-		//FIXME may want to reap exited children live
 		rv |= child_discard_restores(u)
 			| child_stop_commands(u)
 			| x11_default_layout(u);
 	}
 	//automation will be run iff at least one command was stopped, otherwise
 	//we need to trigger it manually
-	control_run_automation();
+	rv |= control_run_automation();
 	return rv;
 }
 
