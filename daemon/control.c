@@ -347,6 +347,25 @@ static automation_operation_t* control_new_operation(){
 	return operations + (noperations - 1);
 }
 
+static int control_build_environment(command_instance_t* inst){
+	size_t u;
+	inst->nargs = nvars * 2;
+	inst->arguments = calloc(nvars * 2, sizeof(char*));
+	if(!inst->arguments){
+		fprintf(stderr, "Failed to allocate memory\n");
+		return 1;
+	}
+	for(u = 0; u < nvars; u++){
+		inst->arguments[u * 2] = strdup(vars[u].name);
+		inst->arguments[(u * 2) + 1] = strdup(vars[u].value);
+		if(!inst->arguments[u * 2] || !inst->arguments[(u * 2) + 1]){
+			fprintf(stderr, "Failed to allocate memory\n");
+			return 1;
+		}
+	}
+	return 0;
+}
+
 int control_run_automation(){
 	size_t u, p, active_assigns = 0, done;
 	int rv = 0;
@@ -461,23 +480,8 @@ apply_results:
 				continue;
 			}
 			//build argument list if not done yet
-			if(!instance_env.arguments){
-				instance_env.nargs = nvars * 2;
-				instance_env.arguments = calloc(nvars * 2, sizeof(char*));
-				if(!instance_env.arguments){
-					fprintf(stderr, "Failed to allocate memory\n");
-					return 1;
-				}
-				for(p = 0; p < nvars; p++){
-					instance_env.arguments[p * 2] = strdup(vars[p].name);
-					instance_env.arguments[(p * 2) + 1] = strdup(vars[p].value);
-					if(!instance_env.arguments[p * 2]
-							|| !instance_env.arguments[(p * 2) + 1]){
-						fprintf(stderr, "Failed to allocate memory\n");
-						rv = 1;
-						goto cleanup;
-					}
-				}
+			if(!instance_env.arguments && control_build_environment(&instance_env)){
+				return 1;
 			}
 
 			fprintf(stderr, "Automation starting window %s, iteration %zu\n", window->name, window->start_iteration);
@@ -757,13 +761,35 @@ int control_config_automation(char* line){
 
 int control_loop(fd_set* in, fd_set* out, int* max_fd){
 	size_t u;
+	command_instance_t env = {
+		0
+	};
 
 	if(!init_done){
+		if(control_build_environment(&env)){
+			return 1;
+		}
+		
+		//this starts keepalive windows, but only allows one try - which is ok for most,
+		//as when they are really needed, automation will retry to start
+		for(u = 0; u < child_window_count(); u++){
+			if(child_window_get(u)->mode == keepalive){
+				//TODO need environment to start here
+				fprintf(stderr, "Control starting keepalive window %s\n", child_window_get(u)->name);
+				child_start(child_window_get(u), 0, 0, &env);
+			}
+		}
 		//checked in _run_automation
 		init_done = 1;
 		if(control_run_automation()){
 			return 1;
 		}
+
+		//free the environment instance
+		for(u = 0; u < env.nargs; u++){
+			free(env.arguments[u]);
+		}
+		free(env.arguments);
 	}
 
 	for(u = 0; u < nfds; u++){
