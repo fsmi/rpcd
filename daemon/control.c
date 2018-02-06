@@ -480,7 +480,7 @@ apply_results:
 				continue;
 			}
 			//build argument list if not done yet
-			if(!instance_env.arguments && control_build_environment(&instance_env)){
+			if(nvars && !instance_env.arguments && control_build_environment(&instance_env)){
 				return 1;
 			}
 
