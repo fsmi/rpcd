@@ -226,7 +226,7 @@ static void child_window_proc(rpcd_child_t* child, command_instance_t* instance_
 }
 
 static size_t child_restack(){
-	size_t u, stack_min = -1, stack_max = 0;
+	ssize_t u, stack_min = -1, stack_max = 0;
 	rpcd_child_t* child = 0;
 
 	for(u = 0; u < ncommands + nwindows; u++){
@@ -594,16 +594,22 @@ Window child_window(size_t display_id, size_t frame_id){
 				&& commands[u].nwindows > 0
 				&& commands[u].order >= stack_index){
 			matched_window = commands[u].windows[commands[u].nwindows - 1];
+			stack_index = commands[u].order;
 		}
 	}
 
-	for(u = 0; !matched_window && u < nwindows; u++){
+	if(matched_window){
+		return matched_window;
+	}
+
+	for(u = 0; u < nwindows; u++){
 		if(windows[u].display_id == display_id
 				&& windows[u].frame_id == frame_id
 				&& windows[u].state == running
 				&& windows[u].nwindows > 0
 				&& windows[u].order >= stack_index){
 			matched_window = windows[u].windows[windows[u].nwindows - 1];
+			stack_index = windows[u].order;
 		}
 	}
 
