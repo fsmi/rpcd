@@ -124,7 +124,7 @@ int main(int argc, char** argv){
 		}
 
 		//select on secondary
-		error = select(max_fd + 1, &secondary, NULL, NULL, NULL);
+		error = pid_signaled ? 0 : select(max_fd + 1, &secondary, NULL, NULL, NULL);
 		if(error < 0){
 			if(errno == EINTR){
 				if(shutdown_requested){
@@ -140,10 +140,12 @@ int main(int argc, char** argv){
 		}
 
 		if(pid_signaled){
+			//reset before handling as it may be re-set by events within
+			//the reap handler (ie. automation)
+			pid_signaled = 0;
 			if(child_reap()){
 				goto bail;
 			}
-			pid_signaled = 0;
 			//FIXME somehow, after returning from a signal handler,
 			//some additional fds are set in secondary
 			//this causes the process to block on accept

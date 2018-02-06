@@ -245,8 +245,6 @@ static size_t child_restack(){
 		for(u = 0; u < ncommands + nwindows; u++){
 			child = (u < ncommands) ? commands + u : windows + (u - ncommands);
 			if(child->order > stack_min){
-				fprintf(stderr, "Restacking order %zu to %zu, minimum %zu maximum %zu\n",
-						child->order, child->order - stack_min, stack_min, stack_max);
 				child->order -= stack_min;
 			}
 		}

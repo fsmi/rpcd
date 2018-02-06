@@ -3,15 +3,13 @@ Somehow, invalid FDs are passed into API handling
 Fix SIGRETURN problem
 
 Documentation
-control implementation
 Window variable replacement
 Window filter configuration
 Reorder non-exported procedures
-Set command order property on start/stop
-Window startup iteration counter
 Split child functionality into 2 modules
 Restart window on variable change?
 Start keepalive windows
+Layout damage tracking
 
 Assign user commands a higher stack order than windows => No, only automate when not busy
 Should layout loading mark the display busy => No
