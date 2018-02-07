@@ -370,7 +370,7 @@ int control_run_automation(){
 	size_t u, p, active_assigns = 0, done;
 	int rv = 0;
 	automation_operation_t* op = NULL;
-	rpcd_child_t* window = NULL;
+	rpcd_child_t* window = NULL, *occupant = NULL;
 	command_instance_t instance_env = {
 		0
 	};
@@ -505,7 +505,12 @@ apply_results:
 			continue;
 		}
 
-		//TODO if replacing ondemand window, kill old occupant
+		//if replacing ondemand window, kill old occupant
+		occupant = child_occupant(assign[u].display_id, assign[u].frame_id);
+		if(occupant && occupant != window && occupant->mode == ondemand){
+			child_stop(occupant);
+		}
+
 		child_raise(window, assign[u].display_id, assign[u].frame_id);
 	}
 

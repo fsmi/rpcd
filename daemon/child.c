@@ -583,9 +583,10 @@ int child_discard_window(size_t display_id, Window window){
 	return 0;
 }
 
-Window child_window(size_t display_id, size_t frame_id){
+
+rpcd_child_t* child_occupant(size_t display_id, size_t frame_id){
 	size_t u, stack_index = 0;
-	Window matched_window = 0;
+	rpcd_child_t* matched_child = NULL;
 
 	for(u = 0; u < ncommands; u++){
 		if(commands[u].display_id == display_id
@@ -593,13 +594,13 @@ Window child_window(size_t display_id, size_t frame_id){
 				&& commands[u].state == running
 				&& commands[u].nwindows > 0
 				&& commands[u].order >= stack_index){
-			matched_window = commands[u].windows[commands[u].nwindows - 1];
+			matched_child = commands + u;
 			stack_index = commands[u].order;
 		}
 	}
 
-	if(matched_window){
-		return matched_window;
+	if(matched_child){
+		return matched_child;
 	}
 
 	for(u = 0; u < nwindows; u++){
@@ -608,12 +609,20 @@ Window child_window(size_t display_id, size_t frame_id){
 				&& windows[u].state == running
 				&& windows[u].nwindows > 0
 				&& windows[u].order >= stack_index){
-			matched_window = windows[u].windows[windows[u].nwindows - 1];
+			matched_child = windows + u;
 			stack_index = windows[u].order;
 		}
 	}
 
-	return matched_window;
+	return matched_child;
+}
+
+Window child_window(size_t display_id, size_t frame_id){
+	rpcd_child_t* child = child_occupant(display_id, frame_id);
+	if(child){
+		return child->windows[child->nwindows - 1];
+	}
+	return 0;
 }
 
 static rpcd_child_t* child_allocate_command(){

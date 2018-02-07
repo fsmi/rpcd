@@ -70,6 +70,7 @@ int child_reap();
 
 int child_match_window(size_t display_id, Window window, pid_t pid, char* title, char* res_name, char* res_class);
 int child_discard_window(size_t display_id, Window window);
+rpcd_child_t* child_occupant(size_t display_id, size_t frame_id);
 Window child_window(size_t display_id, size_t frame_id);
 int child_repatriate(size_t display_id, size_t frame_id, Window window);
 
