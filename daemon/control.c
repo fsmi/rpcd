@@ -472,6 +472,11 @@ apply_results:
 		}
 
 		window = child_window_find(assign[u].requested);
+		//if replacing ondemand window, kill old occupant
+		occupant = child_occupant(assign[u].display_id, assign[u].frame_id);
+		if(occupant && occupant != window && occupant->mode == ondemand){
+			child_stop(occupant);
+		}
 
 		//if stopped, start
 		if(window->state == stopped){
@@ -503,12 +508,6 @@ apply_results:
 			//still waiting for windows to be mapped
 			display_status[assign[u].display_id].status = display_waiting;
 			continue;
-		}
-
-		//if replacing ondemand window, kill old occupant
-		occupant = child_occupant(assign[u].display_id, assign[u].frame_id);
-		if(occupant && occupant != window && occupant->mode == ondemand){
-			child_stop(occupant);
 		}
 
 		child_raise(window, assign[u].display_id, assign[u].frame_id);
