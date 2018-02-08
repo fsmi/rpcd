@@ -70,6 +70,7 @@ except for layout names, which are unique per display.
 |`[control]`		| socket	| none			| `/tmp/rpcd`		| Unix domain socket for automation control | Created if missing
 |			| fifo		| none			| `/tmp/rpcd-fifo`	| FIFO for automation control		| Created if missing
 |`[variables]`		| `VariableName`| none			| `DefaultValue`	| Define an automation variable as well as its default value |
+|`[automation]`		| Automation instructions	| none	| `assign foo bar/1`	| Automation control script (see below)	|
 |`[x11 *name*]`		| display	| `:0`			| `:0.0`		| X11 display identifier to use		|
 |			| deflayout	| none			| `layout_name`		| Layout to apply on reset		|
 |			| repatriate	| none			| `yes`			| Store current window-frame mapping	|
@@ -100,8 +101,6 @@ Placeholders for which no argument configuration is specified are not replaced.
 Automated windows are only displayed when a display is not busy with user commands. The windows to be shown can be started and
 stopped by `rpcd` automatically, based on the automation script and current variable values.
 
-The automation script parser is currently a work in progress and will be documented here at a later time.
-
 #### Automation variables
 Automation variables occupy variable space distinct from user command variables. They may be set via the control inputs or the configuration
 file. All spawned window processes receive the entire automation variable space in their environment. Variable arguments to `window`
@@ -111,8 +110,49 @@ Automation variables are required to follow the naming conventions for environme
 consist of the ASCII characters A-z (upper- and lowercase), as well as the digits 0-9 and the underscore (*_*).
 Variable names may not start a number, to be able to distinguish them from constants and may not contain spaces.
 
-#### Automation input
+#### Automation scripting
+The automation script, given in an `[automation]` section in the control file, consists of line-by-line instructions executed
+sequentially when
+	* `rpcd` is first started
+	* A child (window or command) terminates
+	* The `reset` API endpoint is invoked
+	* An automated window process maps an X11 window
 
+Changes are only made on displays that are not currently running any user commands.
+
+The automation script may contain the following instructions:
+| Instruction	| Arguments	| Example		| Description						|
+|---------------|---------------|-----------------------|-------------------------------------------------------|
+| `default`	| Display name	| `default gpu`		| Apply the default layout on a display if set		|
+| `layout`	| Layout name	| `layout gpu/foo`	| Activate a layout					|
+| `assign`	| Command, frame| `assign bar gpu/1`	| Assign an automated window to a frame			|
+| `skip`	| # Instructions| `skip 5`		| Skip the next `n` instructions			|
+| `done`	| -		| `done`		| Terminate automation script execution			|
+| `if`		| Conditional	| `if empty baz, done`	| If condition is not met, skip the next statement	|
+
+Conditionals may be negated using the syntax `if not`. Valid conditional expressions are
+* `a < b`: Expression `a` numerically less than `b`
+* `a > b`: Expression `a` numerically greater than `b`
+* `a = b`: Expression `a` contains same string as `b`
+* `empty a`: Expression `a` contains an empty string
+
+Expressions may either be
+* Automation variable names
+* Numeric constants
+* Strings encapsulated in double quotes (*"*)
+
+For each display, the last `default`/`layout` instruction decides the final layout to be applied, overwriting previous
+layout calls. In a similar fashion, later `assign` calls overwrite earlier ones referring to the same display/frame combination
+or window.
+
+Note that cascading conditional statements, while possible, will not work as intended due to the internal implementation
+of the automation engine.
+
+When assigning a window active on one display to a frame on another display, `rpcd` will stop and restart the window
+process to execute it on the new display. When defining a window with the `ondemand` kill-mode (see below), the process
+is terminated as soon as the window is no longer mapped on any display.
+
+#### Automation input
 External processes may update the automation variable space and trigger a re-evaluation of the automation script by using one of the
 configured control inputs (Unix domain socket or FIFO).
 
@@ -123,7 +163,6 @@ VariableName=Value
 ```
 
 #### Automated windows
-
 Variables (for example `%AutoVar`) used as parameters are replaced with their value (from the automation variable space) before execution.
 Variables reflect the content they had when the window was started, as updates at a later time are not possible.
 A method to restart a window on variable change may be implemented in the future.

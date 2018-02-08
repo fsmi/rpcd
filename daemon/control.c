@@ -779,7 +779,6 @@ int control_loop(fd_set* in, fd_set* out, int* max_fd){
 		//as when they are really needed, automation will retry to start
 		for(u = 0; u < child_window_count(); u++){
 			if(child_window_get(u)->mode == keepalive){
-				//TODO need environment to start here
 				fprintf(stderr, "Control starting keepalive window %s\n", child_window_get(u)->name);
 				child_start(child_window_get(u), 0, 0, &env);
 			}
