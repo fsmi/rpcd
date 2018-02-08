@@ -248,6 +248,8 @@ static size_t child_restack(){
 				child->order -= stack_min;
 			}
 		}
+
+		fprintf(stderr, "Re-stacked children, stack_max is now %zu\n", stack_max);
 	}
 
 	return stack_max + 1;

@@ -475,6 +475,7 @@ apply_results:
 		//if replacing ondemand window, kill old occupant
 		occupant = child_occupant(assign[u].display_id, assign[u].frame_id);
 		if(occupant && occupant != window && occupant->mode == ondemand){
+			fprintf(stderr, "Automation stopping ondemand window %s\n", occupant->name);
 			child_stop(occupant);
 		}
 
