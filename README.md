@@ -113,6 +113,7 @@ Variable names may not start a number, to be able to distinguish them from const
 #### Automation scripting
 The automation script, given in an `[automation]` section in the control file, consists of line-by-line instructions executed
 sequentially when
+
 	* `rpcd` is first started
 	* A child (window or command) terminates
 	* The `reset` API endpoint is invoked
@@ -121,6 +122,7 @@ sequentially when
 Changes are only made on displays that are not currently running any user commands.
 
 The automation script may contain the following instructions:
+
 | Instruction	| Arguments	| Example		| Description						|
 |---------------|---------------|-----------------------|-------------------------------------------------------|
 | `default`	| Display name	| `default gpu`		| Apply the default layout on a display if set		|
@@ -131,12 +133,14 @@ The automation script may contain the following instructions:
 | `if`		| Conditional	| `if empty baz, done`	| If condition is not met, skip the next statement	|
 
 Conditionals may be negated using the syntax `if not`. Valid conditional expressions are
+
 * `a < b`: Expression `a` numerically less than `b`
 * `a > b`: Expression `a` numerically greater than `b`
 * `a = b`: Expression `a` contains same string as `b`
 * `empty a`: Expression `a` contains an empty string
 
 Expressions may either be
+
 * Automation variable names
 * Numeric constants
 * Strings encapsulated in double quotes (*"*)
