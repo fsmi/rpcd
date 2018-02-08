@@ -114,10 +114,10 @@ Variable names may not start a number, to be able to distinguish them from const
 The automation script, given in an `[automation]` section in the control file, consists of line-by-line instructions executed
 sequentially when
 
-	* `rpcd` is first started
-	* A child (window or command) terminates
-	* The `reset` API endpoint is invoked
-	* An automated window process maps an X11 window
+* `rpcd` is first started
+* A child (window or command) terminates
+* The `reset` API endpoint is invoked
+* An automated window process maps an X11 window
 
 Changes are only made on displays that are not currently running any user commands.
 
