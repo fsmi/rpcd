@@ -6,7 +6,7 @@ class Controller {
 				if (request.readyState === XMLHttpRequest.DONE) {
 					switch(request.status) {
 						case 200:
-							document.querySelector('#status-box').classList.remove('api-error');
+							document.querySelector('#status').classList.remove('api-error');
 							try {
 								var content = JSON.parse(request.responseText);
 								resolve(content);
@@ -23,7 +23,7 @@ class Controller {
 							}
 							break;
 						case 0:
-							document.querySelector('#status-box').classList.add('api-error');
+							document.querySelector('#status').classList.add('api-error');
 							if (window.location.protocol === 'https:') {
 								reject('The API is not available via HTTPS, please connect via HTTP');
 							} else {
@@ -389,7 +389,7 @@ class Controller {
 		};
 
 		if (window.config.api.startsWith('https:')) {
-			document.querySelector('#status-box').classList.add('api-error');
+			document.querySelector('#status').classList.add('api-error');
 			this.status('API not accessible over HTTPS');
 			return;
 		}
