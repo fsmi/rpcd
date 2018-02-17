@@ -49,9 +49,8 @@ char* c_sprintf(const char* format, ...) {
 	return out;
 }
 int usage(int argc, char** argv, Config* config) {
-
-	printf("%s - rpcd client\n"
-			"%s [<options>] cmd\n"
+	printf("rpcd-cli - A command line client for rpcd\n"
+			"Usage: %s [<options>] cmd\n"
 			"\nCommands:\n"
 			"    commands                      List available commands\n"
 			"    layouts                       List available layouts\n"
@@ -69,7 +68,7 @@ int usage(int argc, char** argv, Config* config) {
 			"    -j, --json                    Machine readable (JSON) output\n"
 			"    -h, --host <host>             Target host\n"
 			"    -p, --port <port>             Target port\n"
-			, config->progName, config->progName);
+			, config->progName);
 
 	return -1;
 }
@@ -416,9 +415,6 @@ int print_options(Config* config, ejson_object* root, char* arg_name) {
 		fprintf(stderr, "Server response format invalid: wrong type\n");
 		return 1;
 	}
-
-	printf("\t%s: ", arg_name);
-
 	char* option;
 	int i;
 	for (i = 0; i < options->length; i++) {
@@ -431,9 +427,6 @@ int print_options(Config* config, ejson_object* root, char* arg_name) {
 			printf(" | ");
 		}
 	}
-
-	printf("\n");
-
 	return 0;
 }
 
@@ -451,9 +444,8 @@ int parse_commands(Config* config, struct netdata* data) {
 
 	ejson_object* elem;
 	ejson_array* args;
-	int i;
-	int err;
-	int state;
+	size_t i, j;
+	int err, state;
 	char* name;
 	char* description;
 	for (i = 0; i < ejson->array.length; i++) {
@@ -479,7 +471,7 @@ int parse_commands(Config* config, struct netdata* data) {
 		}
 
 		if(description && strlen(description)){
-			printf("-> %s\n\n", description);
+			printf("-> %s\n", description);
 		}
 
 		err = ejson_get_int_from_key(elem, "windows", false, false, &state);
@@ -506,51 +498,52 @@ int parse_commands(Config* config, struct netdata* data) {
 			return 1;
 		}
 
-		printf("Arguments:\n");
-		int j;
-		ejson_object* arg;
-		char* arg_name;
-		for (j = 0; j < args->length; j++) {
-			arg = &args->values[j]->object;
-
-			if (arg->type != EJSON_OBJECT) {
-				continue;
-			}
-
-			err = ejson_get_string_from_key(arg, "name", false, false, &arg_name);
-			if (err != EJSON_OK) {
-				fprintf(stderr, "Server response format invalid: missing key\n");
-				ejson_cleanup(ejson);
-				return 1;
-			}
-
-			char* type;
-			err = ejson_get_string_from_key(arg, "type", false, false, &type);
-			if (err != EJSON_OK) {
-				fprintf(stderr, "Server response format invalid: missing key\n");
-				ejson_cleanup(ejson);
-				return 1;
-			}
-
-			printf("%s=", arg_name);
-			if (!strcmp(type, "enum")) {
-				if (print_options(config, arg, arg_name)) {
+		if(args->length){
+			ejson_object* arg;
+			char* arg_name;
+			for (j = 0; j < args->length; j++) {
+				arg = &args->values[j]->object;
+	
+				if (arg->type != EJSON_OBJECT) {
+					continue;
+				}
+	
+				err = ejson_get_string_from_key(arg, "name", false, false, &arg_name);
+				if (err != EJSON_OK) {
+					fprintf(stderr, "Server response format invalid: missing key\n");
 					ejson_cleanup(ejson);
 					return 1;
 				}
-			} else {
-				char* hint = NULL;
-				err = ejson_get_string_from_key(arg, "hint", false, false, &hint);
-				if (err == EJSON_OK) {
-					printf("\t%s: %s\n", arg_name, hint);
-				} else if (err != EJSON_KEY_NOT_FOUND) {
-					fprintf(stderr, "Server response format invalid: invalid type\n");
+	
+				char* type;
+				err = ejson_get_string_from_key(arg, "type", false, false, &type);
+				if (err != EJSON_OK) {
+					fprintf(stderr, "Server response format invalid: missing key\n");
 					ejson_cleanup(ejson);
 					return 1;
 				}
+	
+				printf("\t(%6s) %s= ", type, arg_name);
+				if (!strcmp(type, "enum")) {
+					if (print_options(config, arg, arg_name)) {
+						ejson_cleanup(ejson);
+						return 1;
+					}
+				} else {
+					char* hint = NULL;
+					err = ejson_get_string_from_key(arg, "hint", false, false, &hint);
+					if (err == EJSON_OK) {
+						printf("%s", hint);
+					} else if (err != EJSON_KEY_NOT_FOUND) {
+						fprintf(stderr, "Server response format invalid: invalid type\n");
+						ejson_cleanup(ejson);
+						return 1;
+					}
+				}
+				printf("\n");
 			}
-			printf("\n");
 		}
+		printf("\n");
 	}
 	ejson_cleanup(ejson);
 	return 0;
