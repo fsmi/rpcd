@@ -65,6 +65,9 @@ GET/POST /stop/name
 GET/POST /layout/display/name
 	Activate a layout on a display
 
+GET/POST /select/display/id
+	Select a display frame
+
 POST /command/name
 	Start a command
 	Request format

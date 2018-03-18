@@ -539,6 +539,18 @@ static int api_handle_body(http_client_t* client){
 		rv = api_send_header(client, "200 OK", true)
 			|| api_send_status(client);
 	}
+	else if(!strncmp(client->endpoint, "/select/", 8)){
+		if(!strchr(client->endpoint + 8, '/')){
+			fprintf(stderr, "Missing display in select request\n");
+			rv = api_send_header(client, "500 Missing display", false);
+		}
+		else{
+			*strchr(client->endpoint + 8, '/') = 0;
+			x11_select_frame(x11_find_id(client->endpoint + 8), strtoul(client->endpoint + strlen(client->endpoint) + 1, NULL, 10));
+			rv = api_send_header(client, "200 OK", true)
+				|| network_send(client->fd, "{}");
+		}
+	}
 	else if(!strncmp(client->endpoint, "/stop/", 6)){
 		rpcd_child_t* command = child_command_find(client->endpoint + 6);
 		if(!command){
