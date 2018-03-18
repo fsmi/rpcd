@@ -604,6 +604,35 @@ static int api_handle_body(http_client_t* client){
 				|| network_send(client->fd, "{}");
 		}
 	}
+	else if(!strncmp(client->endpoint, "/move/", 6)){
+		if(!strchr(client->endpoint + 6, '/')){
+			fprintf(stderr, "Missing target in move request\n");
+			rv = api_send_header(client, "500 Missing target", false);
+		}
+		else{
+			*strchr(client->endpoint + 6, '/') = 0;
+			rpcd_child_t* command = child_command_find(client->endpoint + 6);
+			if(!command || command->mode != user){
+				rv = api_send_header(client, "400 No such command", false);
+			}
+			else if(!child_active(command)){
+				rv = api_send_header(client, "500 Not running", false);
+			}
+			else if(child_raise(command, command->display_id, strtoul(client->endpoint + strlen(client->endpoint) + 1, NULL, 10))){
+				rv = api_send_header(client, "500 Raise failed", false);
+			}
+			else if(!x11_current_layout(command->display_id)){
+				rv = api_send_header(client, "500 No layout", false);
+			}
+			else if(x11_activate_layout(x11_current_layout(command->display_id))){
+				rv = api_send_header(client, "500 Relayout failed", false);
+			}
+			else{
+				rv = api_send_header(client, "200 OK", true)
+					|| network_send(client->fd, "{}");
+			}
+		}
+	}
 	else{
 		rv = api_send_header(client, "400 Unknown Endpoint", false)
 			|| network_send(client->fd, "The requested endpoint is not supported");

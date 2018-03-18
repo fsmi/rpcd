@@ -68,6 +68,10 @@ GET/POST /layout/display/name
 GET/POST /select/display/id
 	Select a display frame
 
+GET/POST /move/command/frame
+	Move a running command to another frame on the display
+	it is currently running on
+
 POST /command/name
 	Start a command
 	Request format
