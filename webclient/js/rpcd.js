@@ -348,11 +348,12 @@ class Controller {
 		});
 	}
 
-	getStatus() {
+	getStatus(first) {
 		this.ajax(`${window.config.api}/status`, 'GET')
 			.then((state) => {
 				this.state = state;
 				this.fillFrameBox();
+
 				if (state.running) {
 					this.commands.forEach((elem, index) => {
 						let id = state.running.findIndex((val) => {
@@ -372,6 +373,9 @@ class Controller {
 							elemStop.classList.remove('hidden');
 						}
 					});
+				}
+				if (first && document.querySelector('#tabl').checked) {
+					this.selectLayoutFrame();
 				}
 			},
 			(err) => {
@@ -436,10 +440,10 @@ class Controller {
 		});
 
 		Promise.all([lp, cp]).then(() => {
-			this.getStatus();
+			this.getStatus(true);
 			setInterval(this.getStatus.bind(this), 5000);
 		}, (err) => {
-			this.getStatus();
+			this.getStatus(true);
 			setInterval(this.getStatus.bind(this), 5000);
 		});
 
@@ -450,6 +454,39 @@ class Controller {
 			case '#layouts':
 				document.querySelector('#tabl').checked = true;
 				break;
+		}
+	}
+
+	selectCommandFrame() {
+		window.location.hash = '#commands';
+	}
+
+	findByKey(arr, key, value) {
+		return arr.find((val) => {
+			return val[key] === value;
+		});
+	}
+
+	findIndexByKey(arr, key, value) {
+		return arr.findIndex((val) => {
+			return val[key] === value;
+		});
+	}
+
+	selectLayoutFrame() {
+		window.location.hash = '#layouts';
+		if (this.state && this.state.layout) {
+			let display = document.querySelector('#display_selector').value;
+			let layout = this.findByKey(this.state.layout, 'display', display);
+			if (layout) {
+				let l = this.findByKey(this.layouts, 'display', display);
+				let index = this.findIndexByKey(l.layouts, 'name', layout.layout);
+				if (index >= 0) {
+					let target = document.querySelector(`#layout_${index}`);
+					target.checked = true;
+					target.dispatchEvent(new Event('change'));
+				}
+			}
 		}
 	}
 }
