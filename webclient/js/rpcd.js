@@ -236,11 +236,22 @@ class Controller {
 		let canvas = document.querySelector('#previews');
 		canvas.innerHTML = '';
 		let screens = {};
+		this.canvases = [];
 
 		layout.screens = layout.screens || [];
 		layout.screens.forEach((screen) => {
 			let div = document.createElement('div');
 			let c = document.createElement('canvas');
+			c.addEventListener('dragover', (e) => {
+				if (e.preventDefault) {
+					e.preventDefault();
+				}
+				e.dataTransfer.dropEffect = 'copy';
+    			return false;
+			});
+			c.addEventListener('drop', (e) => {
+				this.dropEvent(e, c, screen);
+			});
 			c.width = screen.width;
 			c.height = screen.height;
 			div.appendChild(c);
@@ -348,6 +359,78 @@ class Controller {
 		});
 	}
 
+	buildRunningCommand(elem, index) {
+
+		let item = document.createElement('li');
+		item.draggable = true;
+		item.addEventListener('dragstart', (e) => {
+			e.dataTransfer.effectAllowed = 'copy';
+			e.dataTransfer.setData('cmd_name', elem.name); // required otherwise doesn't work
+		});
+		let name = document.createElement('span');
+		name.textContent = elem.name;
+		let close = document.createElement('span');
+		close.classList.add('breadcrumb_button');
+		close.textContent = ' [x]';
+		close.addEventListener('click', () => {
+			this.stopCommand(index);
+		});
+
+		item.appendChild(name);
+		item.appendChild(close);
+
+		return item;
+	}
+
+	dropEvent(e, canvas, screen) {
+		e.stopPropagation();
+		let display_selected = document.querySelector('#display_selector').value;
+		let layouts_selected = document.querySelector('input[name="layouts"]').value;
+
+		let rect = canvas.getBoundingClientRect();
+		let co = {
+    		x: e.clientX - rect.left,
+    		y: e.clientY - rect.top
+    	};
+
+		let x_scale = screen.width / canvas.clientWidth;
+		let y_scale = screen.height / canvas.clientHeight;
+
+		let xScreen = x_scale * co.x;
+		let yScreen = y_scale * co.y;
+
+		let display = this.layouts.find((val) => {
+			return val.display === display_selected;
+		});
+
+		let frame = display.layouts[0].frames.find((val) => {
+			if (val.screen !== screen.id) {
+				return false;
+			}
+			if (xScreen < val.x || xScreen > val.x + val.w) {
+				return false;
+			} else if (yScreen < val.y || yScreen > val.y + val.h) {
+				return false;
+			}
+			return true;
+		});
+
+		if (!frame) {
+			return;
+		}
+
+		let cmd = e.dataTransfer.getData('cmd_name');
+
+		this.ajax(`${window.config.api}/move/${cmd}/${frame.id}`, 'GET')
+			.then(() => {
+				this.status(`Moved command ${cmd} to frame ${frame.id}`);
+			},
+			(err) => {
+				this.status(`Failed to query status: ${err}`);
+				console.log(`Failed to query status: ${err}`);
+		});
+	}
+
 	getStatus(first) {
 		this.ajax(`${window.config.api}/status`, 'GET')
 			.then((state) => {
@@ -355,6 +438,8 @@ class Controller {
 				this.fillFrameBox();
 
 				if (state.running) {
+					let run_cmds = document.querySelector('#running_commands');
+					run_cmds.innerHTML = '';
 					this.commands.forEach((elem, index) => {
 						let id = state.running.findIndex((val) => {
 							return val === elem.name;
@@ -368,6 +453,7 @@ class Controller {
 							elemStop.classList.add('hidden');
 							elemStart.classList.remove('hidden');
 						} else {
+							run_cmds.appendChild(this.buildRunningCommand(elem, index));
 							label.classList.add('running');
 							elemStart.classList.add('hidden');
 							elemStop.classList.remove('hidden');

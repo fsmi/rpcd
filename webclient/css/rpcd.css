@@ -339,3 +339,21 @@ select {
 	color:#888;
 	float:right;
 }
+
+ul#running_commands li {
+    background-color: #316a73;
+    width: inherit;
+    display: inline;
+    color: #ffffff;
+    padding: 0.2em 0.5em;
+    border-radius: 0.2em;
+    margin: 0 0.5em;
+}
+
+ul#running_commands li span:first-child {
+    padding-left: 0.5em;
+}
+
+.breadcrumb_button {
+	cursor: pointer;
+}
