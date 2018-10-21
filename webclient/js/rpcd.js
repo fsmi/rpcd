@@ -386,6 +386,16 @@ class Controller {
 		e.stopPropagation();
 		let display_selected = document.querySelector('#display_selector').value;
 		let layouts_selected = document.querySelector('input[name="layouts"]').value;
+		let state_layout = this.state.layout.find((val) => {
+			return val.display === display_selected;
+		});
+		if (!state_layout) {
+			console.error(`Cannot find layout for display ${display_selected}` )
+			return
+		}
+
+		state_layout = state_layout.layout;
+
 
 		let rect = canvas.getBoundingClientRect();
 		let co = {
@@ -403,7 +413,16 @@ class Controller {
 			return val.display === display_selected;
 		});
 
-		let frame = display.layouts[0].frames.find((val) => {
+		let layout = display.layouts.find((val) => {
+			return val.name === state_layout;
+		});
+
+		if (!layout) {
+			console.error(`Cannot find layout with name ${state_layout}`);
+			return;
+		}
+
+		let frame = layout.frames.find((val) => {
 			if (val.screen !== screen.id) {
 				return false;
 			}
