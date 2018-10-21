@@ -658,7 +658,8 @@ static int api_data(http_client_t* client){
 	bytes_recv = recv(client->fd, client->recv_buf + client->recv_offset, bytes_left - 1, 0);
 	if(bytes_recv < 0){
 		fprintf(stderr, "Failed to receive from HTTP client: %s\n", strerror(errno));
-		return 1;
+		api_disconnect(client);
+		return 0;
 	}
 	else if(bytes_recv == 0){
 		api_disconnect(client);
