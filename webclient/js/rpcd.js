@@ -364,6 +364,7 @@ class Controller {
 		let item = document.createElement('li');
 		item.draggable = true;
 		item.addEventListener('dragstart', (e) => {
+			this.selectLayoutFrame();
 			e.dataTransfer.effectAllowed = 'copy';
 			e.dataTransfer.setData('cmd_name', elem.name); // required otherwise doesn't work
 		});
