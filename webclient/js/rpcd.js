@@ -497,12 +497,6 @@ class Controller {
 			running: [0]
 		};
 
-		if (window.config.api.startsWith('https:')) {
-			document.querySelector('#status').classList.add('api-error');
-			this.status('API not accessible over HTTPS');
-			return;
-		}
-
 		// dummies
 		let lp = new Promise((resolve, reject) => {
 			this.ajax(`${window.config.api}/layouts`, 'GET')
