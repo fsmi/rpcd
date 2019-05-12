@@ -62,6 +62,7 @@ typedef struct /*_user_command_instance_cfg*/ {
 
 int child_active(rpcd_child_t* child);
 int child_discard_restores(size_t display_id);
+int child_discard_failures();
 int child_start(rpcd_child_t* child, size_t display_id, size_t frame_id, command_instance_t* instance_args);
 int child_raise(rpcd_child_t* child, size_t display_id, size_t frame_id);
 int child_stop(rpcd_child_t* child);

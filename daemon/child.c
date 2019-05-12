@@ -22,6 +22,14 @@ int child_active(rpcd_child_t* child){
 	return child->state != stopped;
 }
 
+int child_discard_failures(){
+	size_t u;
+	for(u = 0; u < nwindows; u++){
+		windows[u].start_iteration = 0;
+	}
+	return 0;
+}
+
 int child_discard_restores(size_t display_id){
 	size_t u;
 	for(u = 0; u < ncommands; u++){

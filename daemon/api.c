@@ -508,7 +508,8 @@ static int api_handle_reset(){
 	for(u = 0; u < x11_count(); u++){
 		rv |= child_discard_restores(u)
 			| child_stop_commands(u)
-			| x11_default_layout(u);
+			| x11_default_layout(u)
+			| child_discard_failures();
 	}
 	//automation will be run iff at least one command was stopped, otherwise
 	//we need to trigger it manually
