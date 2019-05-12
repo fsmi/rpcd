@@ -644,6 +644,13 @@ static int api_handle_body(http_client_t* client){
 
 static int api_data(http_client_t* client){
 	ssize_t u, bytes_recv, bytes_left = client->data_allocated - client->recv_offset;
+
+	//limit receive/processing window
+	if(client->data_allocated >= HARD_SIZE_LIMIT){
+		api_disconnect(client);
+		return 0;
+	}
+
 	if(bytes_left < RECV_CHUNK){
 		client->recv_buf = realloc(client->recv_buf, (client->data_allocated + RECV_CHUNK) * sizeof(char));
 		if(!client->recv_buf){
