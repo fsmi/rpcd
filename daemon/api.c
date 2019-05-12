@@ -646,7 +646,7 @@ static int api_data(http_client_t* client){
 	ssize_t u, bytes_recv, bytes_left = client->data_allocated - client->recv_offset;
 
 	//limit receive/processing window
-	if(client->data_allocated >= HARD_SIZE_LIMIT){
+	if(client->recv_offset >= HARD_SIZE_LIMIT){
 		api_disconnect(client);
 		return 0;
 	}
