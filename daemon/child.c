@@ -7,6 +7,8 @@
 #include <errno.h>
 #include <signal.h>
 #include <limits.h>
+#include <unistd.h>
+#include <time.h>
 
 #include "x11.h"
 #include "child.h"
@@ -263,6 +265,16 @@ static size_t child_restack(){
 	return stack_max + 1;
 }
 
+static void
+random_sleep()
+{
+	unsigned int sleeptime;
+	unsigned int seed = getpid() + time(NULL);
+	srand(seed);
+	sleeptime = ((rand() % (1 << 20)) << 2) + 100; //this is in no way secure or good, I just hope that it works(tm)
+	usleep(sleeptime);
+}
+
 int child_start(rpcd_child_t* child, size_t display_id, size_t frame_id, command_instance_t* instance_args){
 	display_t* display = NULL;
 
@@ -302,6 +314,7 @@ int child_start(rpcd_child_t* child, size_t display_id, size_t frame_id, command
 				}
 			}
 
+			random_sleep();
 			//handle with appropriate child procedure
 			if(child->mode == user || child->mode == user_no_windows){
 				child_command_proc(child, instance_args);
